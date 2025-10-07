@@ -5,9 +5,12 @@ import com.example.Lumi.service.TableService;
 import com.example.Lumi.service.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 @Controller
 public class AuthController {
@@ -22,54 +25,11 @@ public class AuthController {
 
     @GetMapping("/login")
     public String login() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {
+            return "redirect:/dashboard";
+        }
         return "login";
-    }
-
-    @GetMapping("/dashboard")
-    public String dashboard(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return "redirect:/login";
-        }
-
-        String role = authentication.getAuthorities().stream()
-            .findFirst()
-            .map(a -> a.getAuthority())
-            .orElse("");
-
-        if (role.equals("ROLE_ADMIN")) {
-            return "redirect:/admin/dashboard";
-        } else if (role.equals("ROLE_EMPLOYEE")) {
-            return "redirect:/employee/dashboard";
-        }
-
-        return "redirect:/login";
-    }
-
-    @GetMapping("/admin/dashboard")
-    public String adminDashboard(Model model, Authentication authentication) {
-        if (!authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
-            return "redirect:/login";
-        }
-
-        User user = userService.findByUsername(authentication.getName()).orElse(null);
-        model.addAttribute("user", user);
-        model.addAttribute("totalTables", tableService.countAllTables());
-        model.addAttribute("activeTables", tableService.countActiveTables());
-        return "admin/dashboard";
-    }
-
-    @GetMapping("/employee/dashboard")
-    public String employeeDashboard(Model model, Authentication authentication) {
-        if (!authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_EMPLOYEE"))) {
-            return "redirect:/login";
-        }
-
-        User user = userService.findByUsername(authentication.getName()).orElse(null);
-        model.addAttribute("user", user);
-        model.addAttribute("totalTables", tableService.countAllTables());
-        model.addAttribute("activeTables", tableService.countActiveTables());
-        return "employee/dashboard";
-    }
     }
 
     @GetMapping("/dashboard")
@@ -96,6 +56,10 @@ public class AuthController {
         }
         
         User currentUser = userService.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+        
         model.addAttribute("user", currentUser);
         model.addAttribute("totalTables", tableService.countAllTables());
         model.addAttribute("activeTables", tableService.countActiveTables());
@@ -109,20 +73,13 @@ public class AuthController {
         }
         
         User currentUser = userService.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return "redirect:/login";
+        }
+        
         model.addAttribute("user", currentUser);
         model.addAttribute("totalTables", tableService.countAllTables());
         model.addAttribute("activeTables", tableService.countActiveTables());
         return "employee/dashboard";
-    }
-                case ADMIN:
-                    return "dashboard";
-                case EMPLOYEE:
-                    return "employee/table";
-                default:
-                    return "dashboard";
-            }
-        }
-        
-        return "dashboard";
     }
 }

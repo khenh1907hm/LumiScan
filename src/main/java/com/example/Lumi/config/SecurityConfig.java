@@ -1,6 +1,5 @@
 package com.example.Lumi.config;
 
-import com.example.Lumi.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,18 +20,18 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/", "/order/**", "/static/**", "/css/**", "/js/**", "/images/**", "/qrcodes/**").permitAll()
-                .requestMatchers("/login", "/users/register", "/error", "/process-login").permitAll()
+                .requestMatchers("/", "/static/**", "/css/**", "/js/**", "/images/**", "/qrcodes/**").permitAll()
+                .requestMatchers("/login", "/users/register", "/error").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/employee/**").hasRole("EMPLOYEE")
+                .requestMatchers("/order/**").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .loginProcessingUrl("/process-login")
+                .permitAll()
                 .defaultSuccessUrl("/dashboard", true)
                 .failureUrl("/login?error=true")
-                .permitAll()
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
@@ -42,16 +41,7 @@ public class SecurityConfig {
                 .permitAll()
             )
             .csrf(csrf -> csrf.disable());
-            )
-            .logout(logout -> logout
-                .logoutUrl("/logout")
-                .logoutSuccessUrl("/")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
-                .permitAll()
-            )
-            .csrf(csrf -> csrf.disable()); // Tạm thời disable CSRF để test
-
+            
         return http.build();
     }
 
