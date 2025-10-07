@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>LumiScan - Quét mã để đặt bàn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Mobile-first responsive design */
+        @media (max-width: 768px) {
+            .mobile-full { width: 100%; }
+            .mobile-px-4 { padding-left: 1rem; padding-right: 1rem; }
+            .mobile-text-lg { font-size: 1.125rem; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fas fa-utensils text-indigo-600 text-xl md:text-2xl mr-2 md:mr-3"></i>
+                    <h1 class="text-lg md:text-2xl font-bold text-gray-800">LumiScan</h1>
+                </div>
+                <a href="/login" class="text-indigo-600 hover:text-indigo-800 text-sm md:text-base">
+                    <i class="fas fa-sign-in-alt mr-1"></i><span class="hidden md:inline">Đăng nhập</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-6 md:py-12">
+        <!-- Hero Section -->
+        <div class="text-center mb-8 md:mb-12">
+            <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-indigo-600 rounded-full mb-4 md:mb-6">
+                <i class="fas fa-qrcode text-white text-2xl md:text-3xl"></i>
+            </div>
+            <h2 class="text-2xl md:text-4xl font-bold text-gray-800 mb-3 md:mb-4">Chào mừng đến với LumiScan</h2>
+            <p class="text-base md:text-xl text-gray-600 mb-6 md:mb-8 px-4">Quét mã QR trên bàn để xem menu và đặt món</p>
+        </div>
+
+        <!-- QR Scanner Section -->
+        <div class="bg-white rounded-xl md:rounded-2xl shadow-xl p-4 md:p-8 mb-6 md:mb-8">
+            <h3 class="text-lg md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">
+                <i class="fas fa-camera mr-2"></i>Quét mã QR
+            </h3>
+            
+            <div class="text-center">
+                <div id="qr-reader" class="mx-auto mb-4 md:mb-6" style="width: 100%; max-width: 300px;"></div>
+                <p class="text-gray-600 mb-3 md:mb-4 text-sm md:text-base">Hoặc nhập mã bàn thủ công:</p>
+                
+                <div class="max-w-md mx-auto">
+                    <div class="flex">
+                        <input type="text" id="tableNumber" placeholder="Nhập số bàn (VD: 1, 2, 3...)" 
+                               class="flex-1 border border-gray-300 rounded-l-lg p-2 md:p-3 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <button onclick="goToTable()" 
+                                class="bg-indigo-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-r-lg hover:bg-indigo-700 transition-colors">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-white rounded-2xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                <i class="fas fa-info-circle mr-2"></i>Hướng dẫn sử dụng
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                        <i class="fas fa-qrcode text-blue-600 text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">1. Quét mã QR</h4>
+                    <p class="text-gray-600 text-sm">Sử dụng camera để quét mã QR trên bàn</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                        <i class="fas fa-utensils text-green-600 text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">2. Xem menu</h4>
+                    <p class="text-gray-600 text-sm">Chọn món ăn từ menu hiển thị</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                        <i class="fas fa-shopping-cart text-purple-600 text-xl"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-2">3. Đặt món</h4>
+                    <p class="text-gray-600 text-sm">Thêm vào giỏ hàng và gửi đơn hàng</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p>&copy; 2024 LumiScan. Hệ thống quản lý nhà hàng thông minh.</p>
+        </div>
+    </footer>
+
+    <!-- QR Scanner Script -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script>
+        // QR Code Scanner
+        const html5QrcodeScanner = new Html5QrcodeScanner(
+            "qr-reader", 
+            { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 } 
+            },
+            false
+        );
+
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log(`QR Code detected: ${decodedText}`);
+            
+            // Extract table number from URL
+            const url = new URL(decodedText);
+            const tableNumber = url.pathname.split('/').pop();
+            
+            if (tableNumber) {
+                window.location.href = `/order/${tableNumber}`;
+            }
+        }
+
+        function onScanFailure(error) {
+            // Handle scan failure, usually ignore this error as it's not critical
+            console.log(`QR Code scan failed: ${error}`);
+        }
+
+        // Manual table number input
+        function goToTable() {
+            const tableNumber = document.getElementById('tableNumber').value.trim();
+            if (tableNumber) {
+                window.location.href = `/order/${tableNumber}`;
+            } else {
+                alert('Vui lòng nhập số bàn');
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('tableNumber').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                goToTable();
+            }
+        });
+    </script>
+</body>
+</html>

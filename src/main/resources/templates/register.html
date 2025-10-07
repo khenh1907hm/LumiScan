@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Register User</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-indigo-200 min-h-screen flex items-center justify-center">
+<div id="app" class="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md">
+    <h2 class="text-3xl font-bold text-center text-indigo-700 mb-6">Create Account</h2>
+
+    <form @submit.prevent="register" class="space-y-4">
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Username</label>
+            <input type="text" v-model="user.username" required
+                   class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+        </div>
+
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Password</label>
+            <input type="password" v-model="user.password" required
+                   class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+        </div>
+
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Full Name</label>
+            <input type="text" v-model="user.full_name"
+                   class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+        </div>
+
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Email</label>
+            <input type="email" v-model="user.email"
+                   class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+        </div>
+
+        <div>
+            <label class="block text-gray-700 font-medium mb-1">Role</label>
+            <select v-model="user.role"
+                    class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+                <option value="CUSTOMER">Customer</option>
+                <option value="EMPLOYEE">Employee</option>
+                <option value="ADMIN">Admin</option>
+            </select>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition-all duration-200">
+            Register
+        </button>
+    </form>
+
+    <p v-if="message" class="mt-4 text-center text-green-600 font-semibold">{{ message }}</p>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                user: {
+                    username: "",
+                    password: "",
+                    full_name: "",
+                    email: "",
+                    role: "CUSTOMER"
+                },
+                message: ""
+            }
+        },
+        methods: {
+            async register() {
+                try {
+                    let response = await fetch("/users/register", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(this.user)
+                    });
+                    if (response.ok) {
+                        this.message = "✅ Register successful!";
+                    } else {
+                        this.message = "❌ Failed to register!";
+                    }
+                } catch (err) {
+                    console.error(err);
+                    this.message = "⚠️ Error occurred!";
+                }
+            }
+        }
+    }).mount("#app");
+</script>
+</body>
+</html>

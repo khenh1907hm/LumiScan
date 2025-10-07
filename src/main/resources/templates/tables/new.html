@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Create Table</title>
+</head>
+<body>
+<h2>Create New Table</h2>
+<form th:action="@{/tables/save}" th:object="${table}" method="post">
+    <label>Table Number:</label>
+    <input type="text" th:field="*{tableNumber}" required/><br/><br/>
+
+    <label>Status:</label>
+    <select th:field="*{status}">
+        <option value="available">Available</option>
+        <option value="occupied">Occupied</option>
+    </select><br/><br/>
+
+    <button type="submit">Create</button>
+</form>
+</body>
+</html>

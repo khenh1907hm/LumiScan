@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Quản lý bàn - LumiScan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Mobile-first responsive design */
+        .table-card {
+            transition: all 0.3s ease;
+        }
+        .table-card:hover {
+            transform: translateY(-2px);
+        }
+        .status-toggle {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <a href="/dashboard" class="mr-3">
+                        <i class="fas fa-arrow-left text-indigo-600 text-lg"></i>
+                    </a>
+                    <div>
+                        <h1 class="text-lg font-bold text-gray-800">Quản lý bàn</h1>
+                        <p class="text-xs text-gray-500">Nhân viên: <span th:text="${#authentication.name}">User</span></p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="text-right">
+                        <div class="text-sm font-semibold text-gray-800" th:text="${activeTables}">0</div>
+                        <div class="text-xs text-gray-500">Bàn hoạt động</div>
+                    </div>
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-4 py-4">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-table text-blue-600"></i>
+                    </div>
+                    <div>
+                        <div class="text-lg font-bold text-gray-800" th:text="${totalTables}">0</div>
+                        <div class="text-xs text-gray-500">Tổng bàn</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <div>
+                        <div class="text-lg font-bold text-gray-800" th:text="${activeTables}">0</div>
+                        <div class="text-xs text-gray-500">Đang hoạt động</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables List -->
+        <div class="space-y-3">
+            <div th:each="table : ${tables}" class="table-card bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center mr-4"
+                             th:class="${table.status == 'available'} ? 'bg-green-100' : 'bg-red-100'">
+                            <i th:class="${table.status == 'available'} ? 'fas fa-check text-green-600' : 'fas fa-times text-red-600'"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-800" th:text="'Bàn ' + ${table.tableNumber}">Bàn 1</h3>
+                            <p class="text-sm text-gray-500" th:text="${table.status == 'available'} ? 'Có sẵn' : 'Đã sử dụng'">Có sẵn</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <!-- QR Code Button -->
+                        <button onclick="showQR('[[${table.qrCode}]]')" 
+                                class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-qrcode text-indigo-600 text-sm"></i>
+                        </button>
+                        
+                        <!-- Toggle Status Button -->
+                        <form th:action="@{/tables/toggle/{id}(id=${table.id})}" method="post" class="inline">
+                            <button type="submit" 
+                                    th:class="${table.status == 'available'} ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'"
+                                    class="status-toggle w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm">
+                                <i th:class="${table.status == 'available'} ? 'fas fa-times' : 'fas fa-check'"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div th:if="${#lists.isEmpty(tables)}" class="text-center py-12">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-table text-gray-400 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Chưa có bàn nào</h3>
+            <p class="text-gray-500 text-sm">Liên hệ admin để tạo bàn mới</p>
+        </div>
+    </main>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg p-6 max-w-sm w-full">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Mã QR bàn</h3>
+                    <button onclick="hideQR()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="text-center">
+                    <img id="qrImage" src="" alt="QR Code" class="w-48 h-48 mx-auto mb-4">
+                    <p class="text-sm text-gray-500">Khách hàng quét mã này để đặt món</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-8">
+        <div class="px-4 py-3">
+            <div class="flex justify-between items-center text-sm text-gray-500">
+                <span>LumiScan Employee</span>
+                <a href="/logout" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-sign-out-alt mr-1"></i>Đăng xuất
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function showQR(qrPath) {
+            document.getElementById('qrImage').src = qrPath;
+            document.getElementById('qrModal').classList.remove('hidden');
+        }
+
+        function hideQR() {
+            document.getElementById('qrModal').classList.add('hidden');
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(function() {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

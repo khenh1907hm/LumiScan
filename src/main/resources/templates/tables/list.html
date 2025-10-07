@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Table List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen p-10">
+
+<!-- Navigation -->
+<nav class="mb-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">
+            <i class="fas fa-table mr-2"></i>Danh sách bàn
+        </h1>
+        <div class="space-x-4">
+            <a href="/dashboard" class="text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-arrow-left mr-1"></i>Về Dashboard
+            </a>
+            <a th:if="${#authentication.authorities[0].authority == 'ROLE_ADMIN'}" 
+               href="/tables/new" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <i class="fas fa-plus mr-1"></i>Thêm bàn mới
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="max-w-6xl mx-auto bg-white shadow-lg rounded-2xl p-6">
+    <table class="w-full border-collapse">
+        <thead>
+        <tr class="bg-gray-200 text-gray-700">
+            <th class="border p-3">ID</th>
+            <th class="border p-3">Số bàn</th>
+            <th class="border p-3">Trạng thái</th>
+            <th class="border p-3">Mã QR</th>
+            <th th:if="${#authentication.authorities[0].authority == 'ROLE_EMPLOYEE' or #authentication.authorities[0].authority == 'ROLE_ADMIN'}" 
+                class="border p-3">Thao tác</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="table : ${tables}" class="hover:bg-gray-50">
+            <td class="border p-3" th:text="${table.id}"></td>
+            <td class="border p-3 font-semibold" th:text="${table.tableNumber}"></td>
+            <td class="border p-3">
+                <span th:if="${table.status == 'available'}" 
+                      class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                    <i class="fas fa-check-circle mr-1"></i>Có sẵn
+                </span>
+                <span th:if="${table.status == 'occupied'}" 
+                      class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                    <i class="fas fa-times-circle mr-1"></i>Đã sử dụng
+                </span>
+            </td>
+            <td class="border p-3 text-center">
+                <img th:if="${table.qrCode}" th:src="@{${table.qrCode}}" alt="QR Code" class="w-20 h-20 mx-auto">
+            </td>
+            <td th:if="${#authentication.authorities[0].authority == 'ROLE_EMPLOYEE' or #authentication.authorities[0].authority == 'ROLE_ADMIN'}" 
+                class="border p-3 text-center">
+                <form th:action="@{/tables/toggle/{id}(id=${table.id})}" method="post" class="inline">
+                    <button type="submit" 
+                            th:class="${table.status == 'available'} ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'"
+                            class="text-white px-3 py-1 rounded text-sm transition-colors">
+                        <i th:class="${table.status == 'available'} ? 'fas fa-times' : 'fas fa-check'" class="mr-1"></i>
+                        <span th:text="${table.status == 'available'} ? 'Tắt' : 'Bật'"></span>
+                    </button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div th:if="${#lists.isEmpty(tables)}" class="text-center py-8 text-gray-500">
+        <i class="fas fa-table text-4xl mb-4"></i>
+        <p>Chưa có bàn nào được tạo</p>
+        <a th:if="${#authentication.authorities[0].authority == 'ROLE_ADMIN'}" 
+           href="/tables/new" class="text-blue-600 hover:text-blue-800 mt-2 inline-block">
+            Tạo bàn đầu tiên
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

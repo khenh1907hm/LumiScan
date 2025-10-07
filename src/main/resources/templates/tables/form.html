@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Form Bàn</title>
+</head>
+<body>
+<h1>Thông tin bàn</h1>
+<form th:action="@{/tables}" th:object="${table}" method="post">
+    <input type="hidden" th:field="*{id}"/>
+    <p>
+        <label>Số bàn: </label>
+        <input type="text" th:field="*{tableNumber}" required/>
+    </p>
+    <p>
+        <label>QR Code URL: </label>
+        <input type="text" th:field="*{qrCode}"/>
+    </p>
+    <p>
+        <label>Trạng thái: </label>
+        <select th:field="*{status}">
+            <option value="AVAILABLE">AVAILABLE</option>
+            <option value="OCCUPIED">OCCUPIED</option>
+        </select>
+    </p>
+    <button type="submit">Lưu</button>
+</form>
+</body>
+</html>
