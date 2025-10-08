@@ -1,5 +1,7 @@
 package com.example.Lumi.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,11 +12,15 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -27,12 +33,23 @@ public class SecurityConfig {
                 .requestMatchers("/order/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form
-                .loginPage("/login")
-                .permitAll()
-                .defaultSuccessUrl("/dashboard", true)
-                .failureUrl("/login?error=true")
-            )
+            .formLogin(form -> {
+                logger.debug("Configuring form login...");
+                form.loginPage("/login")
+                    .loginProcessingUrl("/login")
+                    .usernameParameter("username")
+                    .passwordParameter("password")
+                    .permitAll()
+                    .successHandler((request, response, authentication) -> {
+                        logger.info("Login successful for user: {}", authentication.getName());
+                        logger.info("User roles: {}", authentication.getAuthorities());
+                        response.sendRedirect("/");
+                    })
+                    .failureHandler((request, response, exception) -> {
+                        logger.error("Login failed: {}", exception.getMessage());
+                        response.sendRedirect("/login?error=true");
+                    });
+            })
             .logout(logout -> logout
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/login?logout=true")
