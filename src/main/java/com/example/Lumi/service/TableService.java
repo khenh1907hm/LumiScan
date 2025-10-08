@@ -3,6 +3,8 @@ package com.example.Lumi.service;
 import com.example.Lumi.model.TableEntity;
 import com.example.Lumi.repository.TableRepository;
 import com.google.zxing.WriterException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -12,6 +14,7 @@ import java.util.Optional;
 @Service
 public class TableService {
 
+    private static final Logger logger = LoggerFactory.getLogger(TableService.class);
     private final TableRepository tableRepository;
     private final QrCodeService qrCodeService;
 
@@ -20,46 +23,75 @@ public class TableService {
         this.qrCodeService = qrCodeService;
     }
 
-    // Lưu bàn mới + tự động sinh QR
-    public void saveTable(TableEntity table) throws IOException, WriterException {
-        String qrPath = qrCodeService.generateQrCode(table.getTableNumber());
-        table.setQrCode(qrPath);
-        tableRepository.save(table);
+    public List<TableEntity> findAllTables() {
+        logger.info("Fetching all tables from repository");
+        try {
+            List<TableEntity> tables = tableRepository.findAll();
+            logger.info("Successfully fetched {} tables", tables.size());
+            return tables;
+        } catch (Exception e) {
+            logger.error("Error fetching tables: ", e);
+            throw e;
+        }
     }
 
-    // Lấy tất cả bàn
-    public List<TableEntity> getAll() {
-        return tableRepository.findAll();
-    }
-
-    // Tìm bàn theo ID
     public Optional<TableEntity> findById(Long id) {
         return tableRepository.findById(id);
     }
 
-    // Bật/tắt trạng thái bàn
+    public void createTable(TableEntity table) throws IOException, WriterException {
+        // Set default status if not provided
+        if (table.getStatus() == null) {
+            table.setStatus("available");
+        }
+        
+        // Generate and set QR code
+        String qrPath = qrCodeService.generateQrCode(table.getTableNumber());
+        table.setQrCode(qrPath);
+        
+        tableRepository.save(table);
+    }
+
+    public void updateTable(Long id, TableEntity updatedTable) {
+        TableEntity existingTable = tableRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
+        
+        existingTable.setTableNumber(updatedTable.getTableNumber());
+        existingTable.setStatus(updatedTable.getStatus());
+        
+        tableRepository.save(existingTable);
+    }
+
     public void toggleTableStatus(Long id) {
-        Optional<TableEntity> tableOpt = tableRepository.findById(id);
-        if (tableOpt.isPresent()) {
-            TableEntity table = tableOpt.get();
-            if ("available".equals(table.getStatus())) {
-                table.setStatus("occupied");
-            } else {
-                table.setStatus("available");
-            }
-            tableRepository.save(table);
+        TableEntity table = tableRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
+        
+        // Toggle the status
+        table.setStatus("available".equals(table.getStatus()) ? "occupied" : "available");
+        tableRepository.save(table);
+    }
+
+    public long countAllTables() {
+        logger.debug("Counting all tables");
+        try {
+            long count = tableRepository.count();
+            logger.debug("Total table count: {}", count);
+            return count;
+        } catch (Exception e) {
+            logger.error("Error counting tables: ", e);
+            throw e;
         }
     }
 
-    // Đếm tổng số bàn
-    public long countAllTables() {
-        return tableRepository.count();
-    }
-
-    // Đếm số bàn đang hoạt động
     public long countActiveTables() {
-        return tableRepository.findAll().stream()
-                .filter(table -> "available".equals(table.getStatus()))
-                .count();
+        logger.debug("Counting active tables");
+        try {
+            long count = tableRepository.countByStatusAvailable();
+            logger.debug("Active table count: {}", count);
+            return count;
+        } catch (Exception e) {
+            logger.error("Error counting active tables: ", e);
+            throw e;
+        }
     }
 }

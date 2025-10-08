@@ -17,23 +17,26 @@ public class QrCodeService {
 
     public String generateQrCode(String tableNumber) throws IOException, WriterException {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
-        String qrText = "http://localhost:8080/order/" + tableNumber; // nội dung QR
+        String qrText = "http://localhost:8080/order/" + tableNumber;
 
         BitMatrix bitMatrix = qrCodeWriter.encode(qrText, BarcodeFormat.QR_CODE, 250, 250);
 
-        // Đảm bảo thư mục tồn tại
-        Path dirPath = Paths.get("src/main/resources/static/qrcodes");
-        if (!Files.exists(dirPath)) {
-            Files.createDirectories(dirPath);
+        // Using absolute path for production
+        String rootPath = System.getProperty("user.dir");
+        Path qrPath = Paths.get(rootPath, "src", "main", "resources", "static", "qrcodes");
+        
+        // Create directories if they don't exist
+        if (!Files.exists(qrPath)) {
+            Files.createDirectories(qrPath);
         }
 
-        // Tên file
-        Path filePath = dirPath.resolve("table_" + tableNumber + ".png");
-
-        // Ghi file QR
+        String fileName = "table_" + tableNumber + ".png";
+        Path filePath = qrPath.resolve(fileName);
+        
+        // Write QR code to file
         MatrixToImageWriter.writeToPath(bitMatrix, "PNG", filePath);
-
-        // Trả về path để lưu vào DB
-        return "/qrcodes/table_" + tableNumber + ".png";
+        
+        // Return relative path for database and web access
+        return "/qrcodes/" + fileName;
     }
 }

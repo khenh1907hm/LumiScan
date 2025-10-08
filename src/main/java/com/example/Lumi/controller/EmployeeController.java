@@ -20,7 +20,7 @@ public class EmployeeController {
 
     @GetMapping("/tables")
     public String manageTables(Model model) {
-        model.addAttribute("tables", tableService.getAll());
+        model.addAttribute("tables", tableService.findAllTables());
         model.addAttribute("totalTables", tableService.countAllTables());
         model.addAttribute("activeTables", tableService.countActiveTables());
         return "employee/tables";

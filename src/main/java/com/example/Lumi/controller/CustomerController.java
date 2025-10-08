@@ -21,7 +21,7 @@ public class CustomerController {
     public String showMenu(@PathVariable String tableNumber, Model model) {
         try {
             // Kiểm tra bàn có tồn tại và đang hoạt động không
-            var tables = tableService.getAll();
+            var tables = tableService.findAllTables();
             var table = tables.stream()
                     .filter(t -> t.getTableNumber().equals(tableNumber))
                     .findFirst();

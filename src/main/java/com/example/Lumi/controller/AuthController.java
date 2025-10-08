@@ -140,16 +140,31 @@ public class AuthController {
         }
         
         try {
+            logger.debug("Finding employee in database: {}", authentication.getName());
             User currentUser = userService.findByUsername(authentication.getName()).orElse(null);
             if (currentUser == null) {
-                logger.error("User not found in database: {}", authentication.getName());
+                logger.error("Employee not found in database: {}", authentication.getName());
                 return "redirect:/login";
             }
             
-            logger.info("Loading employee dashboard for user: {}", currentUser.getUsername());
+            logger.info("Loading employee dashboard data for user: {}", currentUser.getUsername());
+            try {
+                long totalTables = tableService.countAllTables();
+                logger.debug("Total tables count: {}", totalTables);
+                model.addAttribute("totalTables", totalTables);
+                
+                long activeTables = tableService.countActiveTables();
+                logger.debug("Active tables count: {}", activeTables);
+                model.addAttribute("activeTables", activeTables);
+            } catch (Exception e) {
+                logger.error("Error loading table statistics", e);
+                // Set default values if table service fails
+                model.addAttribute("totalTables", 0);
+                model.addAttribute("activeTables", 0);
+            }
+            
             model.addAttribute("user", currentUser);
-            model.addAttribute("totalTables", tableService.countAllTables());
-            model.addAttribute("activeTables", tableService.countActiveTables());
+            logger.info("Rendering employee dashboard template");
             return "employee/dashboard";
         } catch (Exception e) {
             logger.error("Error loading employee dashboard", e);

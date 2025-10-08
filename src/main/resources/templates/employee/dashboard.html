@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - LumiScan</title>
+    <title>Employee Dashboard - LumiScan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen">
         <!-- Navigation -->
-        <nav class="bg-indigo-600 text-white shadow-lg">
+        <nav class="bg-green-600 text-white shadow-lg">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex">
@@ -18,16 +18,12 @@
                             <i class="fas fa-utensils text-2xl"></i>
                             <span class="ml-2 text-xl font-bold">LumiScan</span>
                         </div>
-                        <div class="ml-6 flex space-x-4">
-                            <a href="/admin/dashboard" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Dashboard</a>
-                            <a href="/admin/tables" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Manage Tables</a>
-                        </div>
                     </div>
                     <div class="flex items-center">
                         <span class="px-3 py-2 rounded-md text-sm font-medium">
                             Welcome, <span th:text="${user.username}" class="font-bold"></span>
                         </span>
-                        <a href="/logout" class="ml-4 px-3 py-2 rounded-md text-sm font-medium bg-indigo-700 hover:bg-indigo-800">
+                        <a href="/logout" class="ml-4 px-3 py-2 rounded-md text-sm font-medium bg-green-700 hover:bg-green-800">
                             <i class="fas fa-sign-out-alt mr-1"></i>Logout
                         </a>
                     </div>
@@ -43,7 +39,7 @@
                 <div class="bg-white overflow-hidden shadow rounded-lg">
                     <div class="px-4 py-5 sm:p-6">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
                                 <i class="fas fa-table text-white text-xl"></i>
                             </div>
                             <div class="ml-5 w-0 flex-1">
@@ -60,7 +56,7 @@
                 <div class="bg-white overflow-hidden shadow rounded-lg">
                     <div class="px-4 py-5 sm:p-6">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
                                 <i class="fas fa-check-circle text-white text-xl"></i>
                             </div>
                             <div class="ml-5 w-0 flex-1">
@@ -78,17 +74,17 @@
             <div class="bg-white shadow rounded-lg p-6">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <a href="/admin/tables" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                    <a href="/employee/tables" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
                         <i class="fas fa-table mr-2"></i>
-                        Manage Tables
+                        View Tables
                     </a>
-                    <a href="/admin/employees" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-                        <i class="fas fa-users mr-2"></i>
-                        Manage Employees
+                    <a href="/employee/orders" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                        <i class="fas fa-clipboard-list mr-2"></i>
+                        Manage Orders
                     </a>
-                    <a href="/admin/reports" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                        <i class="fas fa-chart-bar mr-2"></i>
-                        View Reports
+                    <a href="/employee/qr-codes" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700">
+                        <i class="fas fa-qrcode mr-2"></i>
+                        View QR Codes
                     </a>
                 </div>
             </div>
