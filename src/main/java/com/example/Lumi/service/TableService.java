@@ -24,14 +24,12 @@ public class TableService {
     }
 
     public List<TableEntity> findAllTables() {
-        logger.info("Fetching all tables from repository");
         try {
-            List<TableEntity> tables = tableRepository.findAll();
-            logger.info("Successfully fetched {} tables", tables.size());
-            return tables;
+            logger.info("Fetching all tables from repository");
+            return tableRepository.findAll();
         } catch (Exception e) {
             logger.error("Error fetching tables: ", e);
-            throw e;
+            throw new RuntimeException("Failed to fetch tables", e);
         }
     }
 

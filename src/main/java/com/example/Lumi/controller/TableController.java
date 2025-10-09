@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.List;
 
 @Controller
-@RequestMapping("/admin/tables")
+@RequestMapping({"/admin/tables", "/tables"})
 public class TableController {
     
     private static final Logger logger = LoggerFactory.getLogger(TableController.class);
@@ -24,40 +24,18 @@ public class TableController {
         this.tableService = tableService;
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
     @PreAuthorize("hasRole('ADMIN')")
-    public String listTables(Model model, Authentication authentication) {
+    public String listTables(Model model) {
         logger.info("=== Starting listTables method ===");
         try {
-            // Log authentication details
-            logger.info("User: {}, Roles: {}", 
-                authentication.getName(), 
-                authentication.getAuthorities());
-
-            // Fetch tables
             List<TableEntity> tables = tableService.findAllTables();
-            logger.info("Found {} tables", tables.size());
-            if (tables.isEmpty()) {
-                logger.info("No tables found in database");
-            } else {
-                logger.info("First table: id={}, number={}, status={}", 
-                    tables.get(0).getId(), 
-                    tables.get(0).getTableNumber(),
-                    tables.get(0).getStatus());
-            }
-
-            // Add to model
             model.addAttribute("tables", tables);
-            
-            // Log view name
-            logger.info("Added tables to model, returning view: tables/list");
             return "tables/list";
         } catch (Exception e) {
             logger.error("Error in listTables: ", e);
-            logger.error("Exception type: {}", e.getClass().getName());
-            logger.error("Exception message: {}", e.getMessage());
-            logger.error("Stack trace: ", e);
-            throw e;
+            model.addAttribute("error", e.getMessage());
+            return "error";
         }
     }
 

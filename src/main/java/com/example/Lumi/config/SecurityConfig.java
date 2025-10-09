@@ -25,26 +25,21 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .headers(headers -> headers.frameOptions().disable())
+            .headers(headers -> headers.frameOptions().sameOrigin())
             .authorizeHttpRequests(authz -> authz
-                // Static resources
-                .requestMatchers("/static/**").permitAll()
-                .requestMatchers("/css/**").permitAll()
-                .requestMatchers("/js/**").permitAll()
-                .requestMatchers("/images/**").permitAll()
-                .requestMatchers("/qrcodes/**").permitAll()
-                .requestMatchers("/webjars/**").permitAll()
-                .requestMatchers("/favicon.ico").permitAll()
-                // Public pages
-                .requestMatchers("/").permitAll()
-                .requestMatchers("/login").permitAll()
-                .requestMatchers("/users/register").permitAll()
-                .requestMatchers("/error").permitAll()
-                // Role-based access
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/employee/**").hasRole("EMPLOYEE")
+                // Static resources & public pages
+                .requestMatchers(
+                    "/", "/login", "/users/register", "/error",
+                    "/static/**", "/css/**", "/js/**", "/images/**", 
+                    "/qrcodes/**", "/webjars/**", "/favicon.ico"
+                ).permitAll()
+                // Admin routes
+                .requestMatchers("/admin/**", "/tables/**").hasAuthority("ROLE_ADMIN")
+                // Employee routes
+                .requestMatchers("/employee/**").hasAuthority("ROLE_EMPLOYEE")
+                // Customer routes
                 .requestMatchers("/order/**").permitAll()
-                // Everything else requires authentication
+                // Default security
                 .anyRequest().authenticated()
             )
             .formLogin(form -> {

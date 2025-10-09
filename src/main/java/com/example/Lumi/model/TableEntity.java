@@ -10,14 +10,14 @@ public class TableEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "table_number", nullable = false)
+    @Column(name = "table_number", nullable = false, unique = true)
     private String tableNumber;
 
     @Column(nullable = false)
-    private String status; // available, occupied
+    private String status = "available"; // default value
 
     @Column(name = "qr_code")
-    private String qrCode; // lưu đường dẫn file QR code hoặc link
+    private String qrCode;
 
     // getter & setter
     public Long getId() { return id; }
