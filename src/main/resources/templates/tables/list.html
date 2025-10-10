@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Table Management - LumiScan</title>
     
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -47,6 +48,7 @@
         }
     </style>
 </head>
+
 <body class="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
     <!-- Main Container -->
     <div class="container mx-auto px-4 py-8">
@@ -112,17 +114,36 @@
                                 Occupied
                             </span>
                         </td>
-                        <td class="px-6 py-4">
-                            <a th:if="${table.qrCode}" 
-                               th:href="@{'/qrcodes/' + ${table.qrCode}}" 
-                               target="_blank"
-                               class="glass-button px-4 py-2 rounded-lg inline-flex items-center text-white/90 hover:scale-105">
-                                <i class="fas fa-qrcode mr-2"></i>
-                                View QR
+                        <td class="px-6 py-4" x-data="{ showQR: false }">
+                            <a th:if="${table.qrCode}"
+                            href="#"
+                            @click.prevent="showQR = true"
+                            class="glass-button px-4 py-2 rounded-lg inline-flex items-center text-white/90 hover:scale-105">
+                                <i class="fas fa-qrcode mr-2"></i> View QR
                             </a>
+
                             <span th:unless="${table.qrCode}" class="text-white/50">
                                 <i class="fas fa-ban mr-1"></i>No QR Code
                             </span>
+
+                            <!-- Modal hiển thị QR 1-->
+                            <!-- <div 
+                                x-show="showQR"
+                                @click.self="showQR = false"
+                                class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+                            >
+                                <div class="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-lg text-center relative">
+                                    <button @click="showQR = false" 
+                                            class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl">
+                                        &times;
+                                    </button>
+                                    <h2 class="text-xl font-semibold mb-4 text-gray-800">QR Code</h2>
+                                    <img th:src="@{'/qrcodes/' + ${table.qrCode}}" 
+                                        alt="QR Code" 
+                                        class="mx-auto rounded-lg max-h-[400px] object-contain">
+                                </div>
+                            </div> -->
+
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center space-x-4">
@@ -137,10 +158,45 @@
                             </div>
                         </td>
                     </tr>
+
+                    <div 
+                                x-show="showQR"
+                                @click.self="showQR = false"
+                                class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+                            >
+                                <div class="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-lg text-center relative">
+                                    <button @click="showQR = false" 
+                                            class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl">
+                                        &times;
+                                    </button>
+                                    <h2 class="text-xl font-semibold mb-4 text-gray-800">QR Code</h2>
+                                    <img th:src="@{'/qrcodes/' + ${table.qrCode}}" 
+                                        alt="QR Code" 
+                                        class="mx-auto rounded-lg max-h-[400px] object-contain">
+                                </div>
+                            </div>
+
                 </tbody>
             </table>
         </div>
     </div>
+
+    <script>
+document.addEventListener('alpine:init', () => {
+    Alpine.store('qr', {
+        visible: false,
+        src: '',
+        show(src) {
+            this.src = src;
+            this.visible = true;
+        },
+        close() {
+            this.visible = false;
+            this.src = '';
+        }
+    })
+});
+</script>
 
     <!-- Add custom script for animations -->
     <script>
@@ -161,87 +217,4 @@
 </body>
 </html>
 
-        <!-- Main Content -->
-        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div class="px-4 py-6 sm:px-0">
-                <!-- Header -->
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-semibold text-gray-900">Manage Tables</h1>
-                    <a href="/admin/tables/new" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-                        <i class="fas fa-plus mr-2"></i>Add New Table
-                    </a>
-                </div>
-
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Table Number</th>
-                <th>Status</th>
-                <th>QR Code</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:if="${tables.empty}">
-                <td colspan="4">No tables available</td>
-            </tr>
-            <tr th:each="table : ${tables}">
-                <td th:text="${table.tableNumber}">Table 1</td>
-                <td th:text="${table.status}">Available</td>
-                <td>
-                    <a th:if="${table.qrCode}" th:href="@{'/qrcodes/' + ${table.qrCode}}" target="_blank">View QR</a>
-                    <span th:unless="${table.qrCode}">No QR Code</span>
-                </td>
-                <td>
-                    <a th:href="@{'/admin/tables/edit/' + ${table.id}}">Edit</a> |
-                    <a th:href="@{'/admin/tables/toggle-status/' + ${table.id}}">Toggle Status</a>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</body>
-</html>
-        <tbody>
-        <tr th:each="table : ${tables}" class="hover:bg-gray-50">
-            <td class="border p-3" th:text="${table.id}"></td>
-            <td class="border p-3 font-semibold" th:text="${table.tableNumber}"></td>
-            <td class="border p-3">
-                <span th:if="${table.status == 'available'}" 
-                      class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                    <i class="fas fa-check-circle mr-1"></i>Có sẵn
-                </span>
-                <span th:if="${table.status == 'occupied'}" 
-                      class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
-                    <i class="fas fa-times-circle mr-1"></i>Đã sử dụng
-                </span>
-            </td>
-            <td class="border p-3 text-center">
-                <img th:if="${table.qrCode}" th:src="@{${table.qrCode}}" alt="QR Code" class="w-20 h-20 mx-auto">
-            </td>
-            <td th:if="${#authentication.authorities[0].authority == 'ROLE_EMPLOYEE' or #authentication.authorities[0].authority == 'ROLE_ADMIN'}" 
-                class="border p-3 text-center">
-                <form th:action="@{/tables/toggle/{id}(id=${table.id})}" method="post" class="inline">
-                    <button type="submit" 
-                            th:class="${table.status == 'available'} ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'"
-                            class="text-white px-3 py-1 rounded text-sm transition-colors">
-                        <i th:class="${table.status == 'available'} ? 'fas fa-times' : 'fas fa-check'" class="mr-1"></i>
-                        <span th:text="${table.status == 'available'} ? 'Tắt' : 'Bật'"></span>
-                    </button>
-                </form>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-
-    <div th:if="${#lists.isEmpty(tables)}" class="text-center py-8 text-gray-500">
-        <i class="fas fa-table text-4xl mb-4"></i>
-        <p>Chưa có bàn nào được tạo</p>
-        <a th:if="${#authentication.authorities[0].authority == 'ROLE_ADMIN'}" 
-           href="/tables/new" class="text-blue-600 hover:text-blue-800 mt-2 inline-block">
-            Tạo bàn đầu tiên
-        </a>
-    </div>
-</div>
-
-</body>
-</html>
+        

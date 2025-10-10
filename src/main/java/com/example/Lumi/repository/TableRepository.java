@@ -11,10 +11,10 @@ import java.util.List;
 public interface TableRepository extends JpaRepository<TableEntity, Long> {
     Optional<TableEntity> findByTableNumber(String tableNumber);
     
-    @Query("SELECT COUNT(t) FROM TableEntity t WHERE t.status = 'available'")
-    long countByStatusAvailable();
-    
-    @Override
-    @Query("SELECT t FROM TableEntity t")
-    List<TableEntity> findAll();
+   @Query("SELECT COUNT(t) FROM TableEntity t WHERE t.status = 'available'")
+   long countByStatusAvailable();
+
+   @Override
+   @Query("SELECT t FROM TableEntity t")
+   List<TableEntity> findAll();
 }
