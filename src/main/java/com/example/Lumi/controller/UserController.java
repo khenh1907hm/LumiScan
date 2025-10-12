@@ -14,15 +14,15 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/register")
-    public String showRegisterForm(Model model) {
-        model.addAttribute("user", new User());
-        return "register"; // return ra file register.html
-    }
-
-    @PostMapping("/register")
-    public String register(@RequestBody User user) {
-        userService.register(user);
-        return "redirect:/login";
-    }
+//    @GetMapping("/register")
+//    public String showRegisterForm(Model model) {
+//        model.addAttribute("user", new User());
+//        return "register"; // return ra file register.html
+//    }
+//
+//    @PostMapping("/register")
+//    public String register(@RequestBody User user) {
+//        userService.register(user);
+//        return "redirect:/login";
+//    }
 }

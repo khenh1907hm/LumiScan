@@ -3,15 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- Font: Roboto -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<!--    End Font -->
     <title>LumiScan - Quét mã để đặt bàn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* Mobile-first responsive design */
+        * {
+              font-family: 'Roboto', sans-serif;
+            }
+
         @media (max-width: 768px) {
             .mobile-full { width: 100%; }
             .mobile-px-4 { padding-left: 1rem; padding-right: 1rem; }
             .mobile-text-lg { font-size: 1.125rem; }
+        }
+        #qr-reader__scan_region{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+        }
+        #qr-reader{
+            border-radius: 12px;
         }
     </style>
 </head>
@@ -35,28 +52,40 @@
     <main class="max-w-4xl mx-auto px-4 py-6 md:py-12">
         <!-- Hero Section -->
         <div class="text-center mb-8 md:mb-12">
-            <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 bg-indigo-600 rounded-full mb-4 md:mb-6">
-                <i class="fas fa-qrcode text-white text-2xl md:text-3xl"></i>
+            <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20  mb-4 md:mb-6">
+<!--                <i class="fas fa-qrcode text-white text-2xl md:text-3xl"></i>-->
+                <img src="/static/images/hero.png" alt="">
             </div>
             <h2 class="text-2xl md:text-4xl font-bold text-gray-800 mb-3 md:mb-4">Chào mừng đến với LumiScan</h2>
             <p class="text-base md:text-xl text-gray-600 mb-6 md:mb-8 px-4">Quét mã QR trên bàn để xem menu và đặt món</p>
         </div>
 
         <!-- QR Scanner Section -->
-        <div class="bg-white rounded-xl md:rounded-2xl shadow-xl p-4 md:p-8 mb-6 md:mb-8">
-            <h3 class="text-lg md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">
-                <i class="fas fa-camera mr-2"></i>Quét mã QR
+        <div class="bg-white rounded-xl md:rounded-2xl shadow-xl p-4 md:p-8 mb-6 md:mb-8" >
+            <h3 class="text-lg md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center" style="display: flex;justify-content: center;align-items: center;gap: 10px;">
+                <animated-icons
+                        src="https://animatedicons.co/get-icon?name=camera&style=minimalistic&token=0c308f1b-6b38-4d26-b725-90e26782d169"
+                        trigger="click"
+                        attributes='{"variationThumbColour":"#536DFE","variationName":"Two Tone","variationNumber":2,"numberOfGroups":2,"backgroundIsGroup":false,"strokeWidth":1,"defaultColours":{"group-1":"#000000","group-2":"#536DFE","background":"#FFFFFF"}}'
+                        height="50"
+                        width="50"
+                ></animated-icons>
+                Quét mã QR
             </h3>
-            
-            <div class="text-center">
-                <div id="qr-reader" class="mx-auto mb-4 md:mb-6" style="width: 100%; max-width: 300px;"></div>
+
+
+            <div class="text-center" >
+
+                <div id="qr-reader" class="mx-auto mb-4 md:mb-6" style="width: 100%; max-width: 300px;">
+
+                </div>
                 <p class="text-gray-600 mb-3 md:mb-4 text-sm md:text-base">Hoặc nhập mã bàn thủ công:</p>
-                
+
                 <div class="max-w-md mx-auto">
                     <div class="flex">
-                        <input type="text" id="tableNumber" placeholder="Nhập số bàn (VD: 1, 2, 3...)" 
+                        <input type="text" id="tableNumber" placeholder="Nhập số bàn (VD: 1, 2, 3...)"
                                class="flex-1 border border-gray-300 rounded-l-lg p-2 md:p-3 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        <button onclick="goToTable()" 
+                        <button onclick="goToTable()"
                                 class="bg-indigo-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-r-lg hover:bg-indigo-700 transition-colors">
                             <i class="fas fa-arrow-right"></i>
                         </button>
@@ -67,30 +96,34 @@
 
         <!-- Instructions -->
         <div class="bg-white rounded-2xl shadow-xl p-8">
-            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">
-                <i class="fas fa-info-circle mr-2"></i>Hướng dẫn sử dụng
+            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center" style="display: flex;gap: 7px;align-items: center;justify-content: center;">
+                <img width="27px" src="/static/images/section_main.png" alt="">
+                Hướng dẫn sử dụng
             </h3>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="text-center">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                        <i class="fas fa-qrcode text-blue-600 text-xl"></i>
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
+<!--                        <i class="fas fa-qrcode text-blue-600 text-xl"></i>-->
+                        <img src="/static/images/section_1.png" alt="">
                     </div>
                     <h4 class="font-semibold text-gray-800 mb-2">1. Quét mã QR</h4>
                     <p class="text-gray-600 text-sm">Sử dụng camera để quét mã QR trên bàn</p>
                 </div>
                 
                 <div class="text-center">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                        <i class="fas fa-utensils text-green-600 text-xl"></i>
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
+<!--                        <i class="fas fa-utensils text-green-600 text-xl"></i>-->
+                        <img src="/static/images/section_2.png" alt="">
+
                     </div>
                     <h4 class="font-semibold text-gray-800 mb-2">2. Xem menu</h4>
                     <p class="text-gray-600 text-sm">Chọn món ăn từ menu hiển thị</p>
                 </div>
                 
                 <div class="text-center">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
-                        <i class="fas fa-shopping-cart text-purple-600 text-xl"></i>
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
+                        <img src="/static/images/section_3.png" alt="">
                     </div>
                     <h4 class="font-semibold text-gray-800 mb-2">3. Đặt món</h4>
                     <p class="text-gray-600 text-sm">Thêm vào giỏ hàng và gửi đơn hàng</p>
@@ -102,7 +135,7 @@
     <!-- Footer -->
     <footer class="bg-gray-800 text-white py-8 mt-12">
         <div class="max-w-7xl mx-auto px-4 text-center">
-            <p>&copy; 2024 LumiScan. Hệ thống quản lý nhà hàng thông minh.</p>
+            <p>&copy;LumiScan </p>
         </div>
     </footer>
 
@@ -120,6 +153,7 @@
         );
 
         html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
 
         function onScanSuccess(decodedText, decodedResult) {
             console.log(`QR Code detected: ${decodedText}`);
@@ -155,5 +189,8 @@
             }
         });
     </script>
+    <!-- Script để load AnimatedIcons -->
+    <script src="https://animatedicons.co/scripts/embed-animated-icons.js"></script>
+
 </body>
 </html>
