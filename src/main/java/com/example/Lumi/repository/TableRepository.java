@@ -17,4 +17,7 @@ public interface TableRepository extends JpaRepository<TableEntity, Long> {
    @Override
    @Query("SELECT t FROM TableEntity t")
    List<TableEntity> findAll();
+
+   
+
 }

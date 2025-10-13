@@ -5,7 +5,7 @@
 </head>
 <body>
 <h2>Create New Table</h2>
-<form th:action="@{/tables/save}" th:object="${table}" method="post">
+<form th:action="@{/admin/tables}" th:object="${table}" method="post">
     <label>Table Number:</label>
     <input type="text" th:field="*{tableNumber}" required/><br/><br/>
 
