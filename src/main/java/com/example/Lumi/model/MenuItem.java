@@ -26,8 +26,10 @@ public class MenuItem {
 
     private String imageUrl;
 
-    @Column(length = 50)
-    private String category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
 
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM('available','out_of_stock')")

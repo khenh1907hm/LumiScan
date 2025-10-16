@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Thêm / Sửa món ăn</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+<h2 th:text="${menuItem.id == null ? 'Thêm món mới' : 'Chỉnh sửa món'}"></h2>
+
+<form th:action="@{${menuItem.id == null} ? '/admin/menu/create' : '/admin/menu/edit/' + ${menuItem.id}}"
+      th:object="${menuItem}" method="post" enctype="multipart/form-data">
+
+    <label>Tên món:</label>
+    <input type="text" th:field="*{name}" required><br>
+
+    <label>Mô tả:</label>
+    <textarea th:field="*{description}"></textarea><br>
+
+    <label>Giá:</label>
+    <input type="number" step="0.01" th:field="*{price}" required><br>
+
+    <label>Danh mục:</label>
+    <select th:field="*{category.id}" required>
+        <option value="" disabled selected>-- Chọn danh mục --</option>
+        <option th:each="cat : ${categories}"
+                th:value="${cat.id}"
+                th:text="${cat.name}">
+        </option>
+    </select>
+    <br>
+
+    <label>Trạng thái:</label>
+    <select th:field="*{status}">
+        <option value="available">Còn hàng</option>
+        <option value="out_of_stock">Hết hàng</option>
+    </select><br>
+
+    <label>Ảnh món:</label>
+    <input type="file" name="imageFile"><br>
+    <img th:if="${menuItem.imageUrl != null}" th:src="@{${menuItem.imageUrl}}" width="100"><br>
+
+    <button type="submit">Lưu</button>
+    <a th:href="@{/admin/menu}">Quay lại</a>
+</form>
+
+</body>
+</html>

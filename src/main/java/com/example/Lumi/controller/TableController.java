@@ -20,6 +20,7 @@ public class TableController {
     private static final Logger logger = LoggerFactory.getLogger(TableController.class);
     private final TableService tableService;
 
+
     public TableController(TableService tableService) {
         this.tableService = tableService;
     }

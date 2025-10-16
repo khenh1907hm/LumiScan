@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Quản lý món ăn</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<h2>Danh sách món ăn</h2>
+
+<a th:href="@{/admin/menu/create}">+ Thêm món mới</a>
+
+<table border="1">
+    <thead>
+    <tr>
+        <th>Tên món</th>
+        <th>Giá</th>
+        <th>Danh mục</th>
+        <th>Trạng thái</th>
+        <th>Ảnh</th>
+        <th>Hành động</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="item : ${menuItems}">
+        <td th:text="${item.name}"></td>
+        <td th:text="${item.price}"></td>
+<!--        <td th:text="${item.category.name}"></td>-->
+        <td th:text="${item.category != null ? item.category.name : 'Không có'}"></td>
+        <td th:text="${item.status}"></td>
+        <td><img th:src="${item.imageUrl}" width="80"></td>
+        <td>
+            <a th:href="@{'/admin/menu/edit/' + ${item.id}}">Sửa</a> |
+            <a th:href="@{'/admin/menu/delete/' + ${item.id}}"
+               onclick="return confirm('Bạn có chắc chắn muốn xóa món này không?');">Xóa</a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
