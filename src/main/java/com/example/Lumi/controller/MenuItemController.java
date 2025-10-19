@@ -45,41 +45,52 @@ public class MenuItemController {
     // ✅ Trang thêm món ăn mới
     @GetMapping("/create")
     public String showCreateForm(Model model) {
-        model.addAttribute("menuItem", new MenuItem());
+        MenuItem menuItem = new MenuItem();
+        menuItem.setCategory(new Category());
+        model.addAttribute("menuItem", menuItem);
         model.addAttribute("categories", categoryService.getAllCategories());
-        return "admin/menu/form"; // templates/admin/menu/form.html
+        return "admin/menu/form";
     }
+
 
     // ✅ Xử lý thêm món ăn
     @PostMapping("/create")
-//    @PostMapping("/create")
     public String createMenuItem(
             @ModelAttribute("menuItem") MenuItem menuItem,
             BindingResult result,
             @RequestParam("imageFile") MultipartFile imageFile,
             Model model) {
 
-        // ✅ Nếu có lỗi binding, trả lại form (phải gửi lại danh sách categories)
+        // ---------------- Debug ----------------
+        System.out.println("DEBUG: MenuItem nhận từ form:");
+        System.out.println("  name: " + menuItem.getName());
+        System.out.println("  price: " + menuItem.getPrice());
+        if(menuItem.getCategory() != null) {
+            System.out.println("  category id: " + menuItem.getCategory().getId());
+        } else {
+            System.out.println("  category object is null");
+        }
+        System.out.println("  status: " + menuItem.getStatus());
+        System.out.println("-------------------------------------");
+
+        // binding error
         if (result.hasErrors()) {
             model.addAttribute("categories", categoryService.getAllCategories());
             return "admin/menu/form";
         }
 
-        // ✅ Nạp category thật từ DB (chứ không chỉ có id)
-        try {
-            if (menuItem.getCategory() != null && menuItem.getCategory().getId() != null) {
-                Long catId = menuItem.getCategory().getId();
-                Category category = categoryService.getCategoryById(catId)
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID " + catId));
-                menuItem.setCategory(category); // Gán lại category thật
-            } else {
-                model.addAttribute("categories", categoryService.getAllCategories());
-                model.addAttribute("error", "Vui lòng chọn danh mục.");
-                return "admin/menu/form";
-            }
-        } catch (Exception ex) {
+        // Nạp Category thật
+        if (menuItem.getCategory() != null && menuItem.getCategory().getId() != null) {
+            Long catId = menuItem.getCategory().getId();
+            System.out.println("DEBUG: Loading Category từ DB với ID = " + catId);
+            Category category = categoryService.getCategoryById(catId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID " + catId));
+            menuItem.setCategory(category);
+            System.out.println("DEBUG: Category được gán: " + category.getName());
+        } else {
             model.addAttribute("categories", categoryService.getAllCategories());
-            model.addAttribute("error", "Lỗi khi nạp danh mục: " + ex.getMessage());
+            model.addAttribute("error", "Vui lòng chọn danh mục.");
+            System.out.println("DEBUG: Category bị null hoặc chưa chọn");
             return "admin/menu/form";
         }
 
@@ -91,18 +102,12 @@ public class MenuItemController {
                     Files.createDirectories(uploadPath);
                 }
 
-                // Lấy tên file gốc an toàn
                 String original = imageFile.getOriginalFilename();
                 String cleanName = Paths.get(original).getFileName().toString();
-
-                // Sinh tên file duy nhất tránh trùng lặp
                 String uniqueName = UUID.randomUUID() + "_" + cleanName;
                 Path filePath = uploadPath.resolve(uniqueName);
 
-                // Sao chép file vào thư mục upload
                 Files.copy(imageFile.getInputStream(), filePath);
-
-                // Gán đường dẫn ảnh để hiển thị
                 menuItem.setImageUrl("/uploads/menu/" + uniqueName);
 
             } catch (IOException e) {
@@ -113,11 +118,12 @@ public class MenuItemController {
             }
         }
 
-        // ✅ Lưu menuItem (đã có category và imageUrl)
+        // Lưu menuItem vào DB
         menuItemService.createMenuItem(menuItem);
 
         return "redirect:/admin/menu";
     }
+
 
 
     // ✅ Trang chỉnh sửa món ăn
@@ -135,36 +141,61 @@ public class MenuItemController {
     public String updateMenuItem(@PathVariable Long id,
                                  @ModelAttribute("menuItem") MenuItem menuItem,
                                  @RequestParam("imageFile") MultipartFile imageFile,
-                                 BindingResult result) {
+                                 BindingResult result,
+                                 Model model) {
+
         if (result.hasErrors()) {
+            model.addAttribute("categories", categoryService.getAllCategories());
             return "admin/menu/form";
         }
 
-        // Nếu có file ảnh mới thì cập nhật
-        if (!imageFile.isEmpty()) {
+        // ✅ Nạp Category thật từ DB
+        if (menuItem.getCategory() != null && menuItem.getCategory().getId() != null) {
+            Long catId = menuItem.getCategory().getId();
+            Category category = categoryService.getCategoryById(catId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục có ID " + catId));
+            menuItem.setCategory(category);
+        } else {
+            model.addAttribute("categories", categoryService.getAllCategories());
+            model.addAttribute("error", "Vui lòng chọn danh mục.");
+            return "admin/menu/form";
+        }
+
+        // ✅ Xử lý upload ảnh
+        if (imageFile != null && !imageFile.isEmpty()) {
             try {
                 Path uploadPath = Paths.get(UPLOAD_DIR);
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
                 }
 
-                String fileName = imageFile.getOriginalFilename();
-                Path filePath = uploadPath.resolve(fileName);
-                Files.write(filePath, imageFile.getBytes());
+                String original = imageFile.getOriginalFilename();
+                String cleanName = Paths.get(original).getFileName().toString();
+                String uniqueName = UUID.randomUUID() + "_" + cleanName;
+                Path filePath = uploadPath.resolve(uniqueName);
 
-                menuItem.setImageUrl("/uploads/menu/" + fileName);
+                Files.copy(imageFile.getInputStream(), filePath);
+                menuItem.setImageUrl("/uploads/menu/" + uniqueName);
+
             } catch (IOException e) {
                 e.printStackTrace();
+                model.addAttribute("categories", categoryService.getAllCategories());
+                model.addAttribute("error", "Không thể lưu ảnh: " + e.getMessage());
+                return "admin/menu/form";
             }
         } else {
             // Giữ lại ảnh cũ nếu không upload mới
-            MenuItem existing = menuItemService.getMenuItemById(id).orElseThrow();
+            MenuItem existing = menuItemService.getMenuItemById(id)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn có id " + id));
             menuItem.setImageUrl(existing.getImageUrl());
         }
 
+        // Lưu update
         menuItemService.updateMenuItem(id, menuItem);
+
         return "redirect:/admin/menu";
     }
+
 
     // ✅ Xóa món ăn
     @GetMapping("/delete/{id}")

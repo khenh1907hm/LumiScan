@@ -1,47 +1,90 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
 <head>
-    <title>Thêm / Sửa món ăn</title>
     <meta charset="UTF-8">
+    <title th:text="${menuItem.id == null ? 'Thêm món ăn' : 'Chỉnh sửa món ăn'}"></title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
 </head>
-<body>
-<h2 th:text="${menuItem.id == null ? 'Thêm món mới' : 'Chỉnh sửa món'}"></h2>
+<body class="bg-light">
 
-<form th:action="@{${menuItem.id == null} ? '/admin/menu/create' : '/admin/menu/edit/' + ${menuItem.id}}"
-      th:object="${menuItem}" method="post" enctype="multipart/form-data">
+<div class="container mt-5">
+    <h2 class="mb-4 text-center"
+        th:text="${menuItem.id == null ? 'Thêm món ăn mới' : 'Chỉnh sửa món ăn'}"></h2>
 
-    <label>Tên món:</label>
-    <input type="text" th:field="*{name}" required><br>
+    <form th:action="@{${menuItem.id == null} ? '/admin/menu/create' : '/admin/menu/edit/' + ${menuItem.id}}"
+          th:object="${menuItem}"
+          method="post"
+          enctype="multipart/form-data"
+          class="card p-4 shadow-sm">
 
-    <label>Mô tả:</label>
-    <textarea th:field="*{description}"></textarea><br>
+        <!-- Tên món -->
+        <div class="mb-3">
+            <label class="form-label">Tên món</label>
+            <input type="text" th:field="*{name}" class="form-control" placeholder="Nhập tên món ăn" required>
+        </div>
 
-    <label>Giá:</label>
-    <input type="number" step="0.01" th:field="*{price}" required><br>
+        <!-- Mô tả -->
+        <div class="mb-3">
+            <label class="form-label">Mô tả</label>
+            <textarea th:field="*{description}" class="form-control" rows="3"
+                      placeholder="Nhập mô tả món ăn (nếu có)"></textarea>
+        </div>
 
-    <label>Danh mục:</label>
-    <select th:field="*{category.id}" required>
-        <option value="" disabled selected>-- Chọn danh mục --</option>
-        <option th:each="cat : ${categories}"
-                th:value="${cat.id}"
-                th:text="${cat.name}">
-        </option>
-    </select>
-    <br>
+        <!-- Giá -->
+        <div class="mb-3">
+            <label class="form-label">Giá (VNĐ)</label>
+            <input type="number" step="0.01" th:field="*{price}" class="form-control" required>
+        </div>
 
-    <label>Trạng thái:</label>
-    <select th:field="*{status}">
-        <option value="available">Còn hàng</option>
-        <option value="out_of_stock">Hết hàng</option>
-    </select><br>
+        <!-- Danh mục -->
+        <div class="mb-3">
+            <label class="form-label">Danh mục</label>
+            <select th:field="*{category.id}" class="form-select" required>
+                <option value="" disabled
+                        th:selected="${menuItem.category == null or menuItem.category.id == null}">
+                    -- Chọn danh mục --
+                </option>
+                <option th:each="cat : ${categories}"
+                        th:value="${cat.id}"
+                        th:text="${cat.name}">
+                </option>
+            </select>
+        </div>
 
-    <label>Ảnh món:</label>
-    <input type="file" name="imageFile"><br>
-    <img th:if="${menuItem.imageUrl != null}" th:src="@{${menuItem.imageUrl}}" width="100"><br>
+        <!-- Ảnh -->
+        <div class="mb-3">
+            <label class="form-label">Ảnh món ăn</label>
+            <input type="file" name="imageFile" class="form-control">
 
-    <button type="submit">Lưu</button>
-    <a th:href="@{/admin/menu}">Quay lại</a>
-</form>
+            <!-- Hiển thị ảnh cũ khi sửa -->
+            <div th:if="${menuItem.imageUrl != null}" class="mt-3 text-center">
+                <p>Ảnh hiện tại:</p>
+                <img th:src="@{${menuItem.imageUrl}}" alt="Ảnh món ăn" class="img-fluid rounded shadow" style="max-width: 200px;">
+            </div>
+        </div>
+
+        <!-- Trạng thái -->
+        <div class="mb-3">
+            <label class="form-label">Trạng thái</label>
+            <select th:field="*{status}" class="form-select">
+                <option value="available">Còn hàng</option>
+                <option value="out_of_stock">Hết hàng</option>
+            </select>
+        </div>
+
+        <!-- Nút Lưu -->
+        <div class="text-center">
+            <button type="submit" class="btn btn-primary px-4">
+                <span th:text="${menuItem.id == null ? 'Thêm món' : 'Cập nhật'}"></span>
+            </button>
+            <a th:href="@{/admin/menu}" class="btn btn-secondary ms-2">Hủy</a>
+        </div>
+
+        <!-- Hiển thị lỗi -->
+        <div th:if="${error}" class="alert alert-danger mt-3" th:text="${error}"></div>
+
+    </form>
+</div>
 
 </body>
 </html>

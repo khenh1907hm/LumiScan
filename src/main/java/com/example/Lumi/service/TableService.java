@@ -50,6 +50,10 @@ public class TableService {
         tableRepository.save(table);
     }
 
+    public Optional<TableEntity> findByTableNumber(String tableNumber) {
+        return tableRepository.findByTableNumber(tableNumber);
+    }
+
     public void updateTable(Long id, TableEntity updatedTable) {
         TableEntity existingTable = tableRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));

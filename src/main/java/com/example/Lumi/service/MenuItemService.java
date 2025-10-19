@@ -2,12 +2,14 @@ package com.example.Lumi.service;
 
 import com.example.Lumi.model.MenuItem;
 import com.example.Lumi.repository.MenuItemRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
+@Transactional
 @Service
 public class MenuItemService {
 
