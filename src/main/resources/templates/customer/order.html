@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Đặt món - Bàn <span th:text="${tableNumber}">1</span></title>
+    <title>Đặt món</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -95,40 +95,49 @@
                               th:unless="${item.status?.name() == 'available'}">Hết hàng</span>
                     </div>
                 </div>
+                <div class="flex items-center mt-3">
+                    <button th:attr="onclick=|addToCart(${item.id})|"
+                            class="bg-indigo-600 text-white text-sm px-3 py-1 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-cart-plus mr-1"></i>
+                    </button>
+
+                </div>
             </div>
         </div>
+
     </div>
 
 </main>
 
-<!-- Cart Sidebar -->
-<div id="cartSidebar" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
-    <div class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl">
-        <div class="p-4 border-b">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-semibold">Giỏ hàng</h3>
-                <button onclick="toggleCart()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
+<!-- Cart Bottom Sheet -->
+<div id="cartSidebar"
+     class="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl transform translate-y-full transition-transform duration-300 ease-in-out">
 
-        <div class="flex-1 overflow-y-auto p-4">
-            <div id="cartItems" class="space-y-3">
-                <!-- Cart items will be added here -->
-            </div>
-        </div>
+    <!-- Header -->
+    <div class="p-4 border-b flex justify-between items-center">
+        <h3 class="text-lg font-semibold">Giỏ hàng</h3>
+        <button onclick="toggleCart()" class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
 
-        <div class="p-4 border-t bg-gray-50">
-            <div class="flex justify-between items-center mb-4">
-                <span class="text-lg font-semibold">Tổng cộng:</span>
-                <span id="totalPrice" class="text-lg font-bold text-indigo-600">0đ</span>
-            </div>
-            <button onclick="placeOrder()"
-                    class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
-                Đặt món
-            </button>
+    <!-- Cart Content -->
+    <div class="overflow-y-auto p-4" style="max-height: 50vh;">
+        <div id="cartItems" class="space-y-3">
+            <!-- Cart items sẽ được thêm bằng JS -->
         </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-4 border-t bg-gray-50 flex justify-between items-center">
+        <div>
+            <span class="text-sm text-gray-600">Tổng cộng:</span>
+            <p id="totalPrice" class="text-lg font-bold text-indigo-600">0đ</p>
+        </div>
+        <button onclick="placeOrder()"
+                class="bg-indigo-600 text-white px-5 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition">
+            Xác nhận
+        </button>
     </div>
 </div>
 
@@ -143,23 +152,22 @@
 </div>
 
 <!-- JavaScript (giữ nguyên) -->
-<script>
-    let cart = {};
+<script th:inline="javascript">
+    let cart = {}; // Lưu tạm các món trong giỏ hàng
     let totalPrice = 0;
+    const tableNumber = /*[[${tableNumber}]]*/ 1; // Lấy số bàn từ Thymeleaf
 
-    // Category filtering
+    // --- Bộ lọc theo danh mục ---
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.addEventListener('click', function () {
                 const category = this.dataset.category;
 
-                // Update button styles
                 document.querySelectorAll('.category-btn').forEach(b => {
                     b.className = 'category-btn px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm whitespace-nowrap';
                 });
                 this.className = 'category-btn px-4 py-2 bg-indigo-600 text-white rounded-full text-sm whitespace-nowrap';
 
-                // Filter menu items
                 document.querySelectorAll('.menu-item').forEach(item => {
                     if (category === 'all' || item.dataset.category === category) {
                         item.style.display = 'block';
@@ -171,29 +179,29 @@
         });
     });
 
+    // --- Thêm món vào giỏ ---
+    function addToCart(itemId) {
+        if (!cart[itemId]) cart[itemId] = 0;
+        cart[itemId]++;
+        updateCartDisplay();
+    }
+
+    // --- Cập nhật số lượng ---
     function increaseQuantity(itemId) {
-        const quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
-        document.getElementById(`quantity-${itemId}`).textContent = quantity + 1;
-        updateCart(itemId, quantity + 1);
+        cart[itemId]++;
+        updateCartDisplay();
     }
 
     function decreaseQuantity(itemId) {
-        const quantity = parseInt(document.getElementById(`quantity-${itemId}`).textContent);
-        if (quantity > 0) {
-            document.getElementById(`quantity-${itemId}`).textContent = quantity - 1;
-            updateCart(itemId, quantity - 1);
-        }
-    }
-
-    function updateCart(itemId, quantity) {
-        if (quantity === 0) {
-            delete cart[itemId];
+        if (cart[itemId] > 1) {
+            cart[itemId]--;
         } else {
-            cart[itemId] = quantity;
+            delete cart[itemId];
         }
         updateCartDisplay();
     }
 
+    // --- Cập nhật hiển thị giỏ hàng ---
     function updateCartDisplay() {
         const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
         document.getElementById('cartCount').textContent = cartCount;
@@ -201,8 +209,8 @@
 
         const cartItems = document.getElementById('cartItems');
         cartItems.innerHTML = '';
-
         totalPrice = 0;
+
         Object.keys(cart).forEach(itemId => {
             const itemElement = document.querySelector(`[onclick*="${itemId}"]`).closest('.menu-item');
             const name = itemElement.querySelector('h3').textContent;
@@ -231,28 +239,64 @@
             `;
             cartItems.appendChild(cartItem);
         });
+
         document.getElementById('totalPrice').textContent = totalPrice.toLocaleString() + 'đ';
     }
 
+    // --- Mở / đóng giỏ hàng ---
     function toggleCart() {
-        document.getElementById('cartSidebar').classList.toggle('hidden');
+        const cartSidebar = document.getElementById('cartSidebar');
+        const isHidden = cartSidebar.classList.contains('translate-y-full');
+        if (isHidden) {
+            cartSidebar.classList.remove('translate-y-full');
+            cartSidebar.classList.add('translate-y-0');
+        } else {
+            cartSidebar.classList.remove('translate-y-0');
+            cartSidebar.classList.add('translate-y-full');
+        }
     }
 
-    function placeOrder() {
+    // --- Gửi đơn hàng lên server ---
+    async function placeOrder() {
         if (Object.keys(cart).length === 0) {
             alert('Vui lòng chọn món trước khi đặt hàng!');
             return;
         }
-        alert('Đặt món thành công!');
-        cart = {};
-        updateCartDisplay();
-        toggleCart();
-        document.querySelectorAll('[id^="quantity-"]').forEach(el => el.textContent = '0');
+
+        const orderData = {
+            tableNumber: tableNumber,
+            items: cart
+        };
+
+        try {
+            const response = await fetch('/order/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(result.message || 'Đặt món thành công!');
+                cart = {};
+                updateCartDisplay();
+                toggleCart();
+            } else {
+                alert('Có lỗi khi gửi đơn hàng!');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Không thể kết nối đến server.');
+        }
     }
 
+    // --- Cập nhật thời gian ---
     setInterval(() => {
         document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
     }, 30000);
 </script>
+
 </body>
 </html>
