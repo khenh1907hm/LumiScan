@@ -109,6 +109,9 @@
 
 </main>
 
+<!-- Cart Overlay (mới thêm) -->
+<div id="cartOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="toggleCart()"></div>
+
 <!-- Cart Bottom Sheet -->
 <div id="cartSidebar"
      class="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl transform translate-y-full transition-transform duration-300 ease-in-out">
@@ -142,7 +145,7 @@
 </div>
 
 <!-- Floating Cart Button -->
-<div class="fixed bottom-4 right-4 z-40">
+<div class="fixed bottom-4 right-4 z-50">
     <button onclick="toggleCart()"
             class="w-14 h-14 bg-indigo-600 rounded-full shadow-lg flex items-center justify-center relative">
         <i class="fas fa-shopping-cart text-white text-lg"></i>
@@ -151,7 +154,7 @@
     </button>
 </div>
 
-<!-- JavaScript (giữ nguyên) -->
+<!-- JavaScript (cập nhật) -->
 <script th:inline="javascript">
     let cart = {}; // Lưu tạm các món trong giỏ hàng
     let totalPrice = 0;
@@ -243,16 +246,21 @@
         document.getElementById('totalPrice').textContent = totalPrice.toLocaleString() + 'đ';
     }
 
-    // --- Mở / đóng giỏ hàng ---
+    // --- Mở / đóng giỏ hàng (cập nhật để bao gồm overlay) ---
     function toggleCart() {
         const cartSidebar = document.getElementById('cartSidebar');
+        const cartOverlay = document.getElementById('cartOverlay');
         const isHidden = cartSidebar.classList.contains('translate-y-full');
         if (isHidden) {
             cartSidebar.classList.remove('translate-y-full');
             cartSidebar.classList.add('translate-y-0');
+            cartOverlay.classList.remove('hidden');
+            floatingCartButton.style.display = 'none'; // Ẩn nút giỏ hàng
         } else {
             cartSidebar.classList.remove('translate-y-0');
             cartSidebar.classList.add('translate-y-full');
+            cartOverlay.classList.add('hidden');
+            floatingCartButton.style.display = 'flex'; // Hiện nút giỏ hàng
         }
     }
 

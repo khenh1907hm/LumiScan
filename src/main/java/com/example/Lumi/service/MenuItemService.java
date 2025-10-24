@@ -24,6 +24,12 @@ public class MenuItemService {
         return menuItemRepository.findById(id);
     }
 
+    // Phương thức mới: Trả về MenuItem trực tiếp, ném ngoại lệ nếu không tìm thấy
+    public MenuItem getMenuItemByIdOrThrow(Long id) {
+        return menuItemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Món ăn không tồn tại: " + id));
+    }
+
     public MenuItem createMenuItem(MenuItem menuItem) {
         return menuItemRepository.save(menuItem);
     }

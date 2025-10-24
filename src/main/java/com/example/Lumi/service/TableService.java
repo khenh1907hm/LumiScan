@@ -42,11 +42,11 @@ public class TableService {
         if (table.getStatus() == null) {
             table.setStatus("available");
         }
-        
+
         // Generate and set QR code
         String qrPath = qrCodeService.generateQrCode(table.getTableNumber());
         table.setQrCode(qrPath);
-        
+
         tableRepository.save(table);
     }
 
@@ -56,18 +56,29 @@ public class TableService {
 
     public void updateTable(Long id, TableEntity updatedTable) {
         TableEntity existingTable = tableRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
-        
+                .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
+
         existingTable.setTableNumber(updatedTable.getTableNumber());
         existingTable.setStatus(updatedTable.getStatus());
-        
+
         tableRepository.save(existingTable);
+    }
+
+    // Hàm mới: Cập nhật status của bàn theo tableNumber
+    public void updateTableStatus(String tableNumber, String status) {
+        TableEntity table = tableRepository.findByTableNumber(tableNumber)
+                .orElseThrow(() -> new IllegalArgumentException("Bàn không tồn tại: " + tableNumber));
+
+        table.setStatus(status);
+        tableRepository.save(table);
+
+        logger.info("Updated status of table {} to {}", tableNumber, status);
     }
 
     public void toggleTableStatus(Long id) {
         TableEntity table = tableRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
-        
+                .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
+
         // Toggle the status
         table.setStatus("available".equals(table.getStatus()) ? "occupied" : "available");
         tableRepository.save(table);
@@ -96,5 +107,4 @@ public class TableService {
             throw e;
         }
     }
-    
 }

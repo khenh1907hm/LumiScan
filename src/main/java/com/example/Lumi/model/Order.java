@@ -22,10 +22,6 @@ public class Order {
     @JoinColumn(name = "table_id", nullable = false)
     private TableEntity table;
 
-    // Có thể gắn với khách (user)
-    @ManyToOne
-    @JoinColumn(name = "customer_id")
-    private User customer;
 
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM('pending','preparing','done','paid')")
