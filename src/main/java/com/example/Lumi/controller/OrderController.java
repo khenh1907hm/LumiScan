@@ -1,17 +1,23 @@
 package com.example.Lumi.controller;
 
 import com.example.Lumi.model.Order;
+import com.example.Lumi.model.OrderItem;
+import com.example.Lumi.repository.OrderRepository;
+import com.example.Lumi.repository.OrderItemRepository;
 import com.example.Lumi.service.CategoryService;
 import com.example.Lumi.service.MenuItemService;
 import com.example.Lumi.service.OrderService;
 import com.example.Lumi.service.TableService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,16 +31,25 @@ public class OrderController {
     private final CategoryService categoryService;
     private final MenuItemService menuItemService;
     private final OrderService orderService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @Autowired
     public OrderController(TableService tableService,
                            CategoryService categoryService,
                            MenuItemService menuItemService,
-                           OrderService orderService) {
+                           OrderService orderService,
+                           SimpMessagingTemplate messagingTemplate,
+                           OrderRepository orderRepository,
+                           OrderItemRepository orderItemRepository) {
         this.tableService = tableService;
         this.categoryService = categoryService;
         this.menuItemService = menuItemService;
         this.orderService = orderService;
+        this.messagingTemplate = messagingTemplate;
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     // GET: Hiển thị menu cho bàn (cho phép khách hàng truy cập công khai)
@@ -83,15 +98,89 @@ public class OrderController {
                 itemReq.setQuantity(entry.getValue());
                 orderItems.add(itemReq);
             }
-
             // Tạo order
             Order order = orderService.createOrder(request.getTableNumber(), orderItems);
+
+            // Gửi thông báo realtime đến employee
+            messagingTemplate.convertAndSend("/topic/orders",
+                    "New order from table " + request.getTableNumber() + " - Order ID: " + order.getId());
 
             response.put("success", true);
             response.put("message", "Đặt món thành công! Mã đơn: " + order.getId());
             response.put("orderId", order.getId());
             return ResponseEntity.ok(response);
 
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // GET: Lấy order theo bàn (cho employee)
+    @GetMapping("/table/{tableNumber}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getOrderByTable(@PathVariable String tableNumber) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            var tableOpt = tableService.findByTableNumber(tableNumber);
+            if (tableOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Bàn không tồn tại");
+                return ResponseEntity.badRequest().body(response);
+            }
+            var table = tableOpt.get();
+            // Lấy order pending hôm nay (giả sử repo có method này)
+            List<Order> orders = orderRepository.findByTableAndStatusAndCreatedAt(table, Order.Status.pending, LocalDate.now());
+            if (orders.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Không có order nào");
+                return ResponseEntity.ok(response);
+            }
+            Order order = orders.get(0); // Giả sử 1 bàn 1 order active
+            response.put("success", true);
+            response.put("order", order);
+            response.put("total", orderService.calculateTotal(order));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // POST: Cập nhật items trong order (cho employee)
+    @PostMapping("/update-items")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> updateOrderItems(@RequestBody UpdateOrderRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            var orderOpt = orderService.getOrderById(request.getOrderId());
+            if (orderOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Order không tồn tại");
+                return ResponseEntity.badRequest().body(response);
+            }
+            Order order = orderOpt.get();
+            // Xóa items cũ và thêm mới
+            orderItemRepository.deleteByOrder(order);
+            for (OrderService.OrderItemRequest itemReq : request.getItems()) {
+                var menuItem = menuItemService.getMenuItemByIdOrThrow(itemReq.getMenuItemId());
+                var item = OrderItem.builder()
+                        .order(order)
+                        .menuItem(menuItem)
+                        .quantity(itemReq.getQuantity())
+                        .price(menuItem.getPrice())
+                        .build();
+                orderItemRepository.save(item);
+            }
+            order.setUpdatedAt(LocalDateTime.now());
+            orderRepository.save(order);
+            // Gửi notification realtime
+            messagingTemplate.convertAndSend("/topic/orders", "Order updated for table " + order.getTable().getTableNumber());
+            response.put("success", true);
+            response.put("message", "Cập nhật order thành công");
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", "Lỗi: " + e.getMessage());
@@ -136,6 +225,17 @@ public class OrderController {
         public void setTableNumber(String tableNumber) { this.tableNumber = tableNumber; }
         public Map<Long, Integer> getItems() { return items; }
         public void setItems(Map<Long, Integer> items) { this.items = items; }
+    }
+
+    // DTO cho update request
+    public static class UpdateOrderRequest {
+        private Long orderId;
+        private List<OrderService.OrderItemRequest> items;
+
+        public Long getOrderId() { return orderId; }
+        public void setOrderId(Long orderId) { this.orderId = orderId; }
+        public List<OrderService.OrderItemRequest> getItems() { return items; }
+        public void setItems(List<OrderService.OrderItemRequest> items) { this.items = items; }
     }
 
     // DTO cũ cho form submit (nếu cần giữ cho POST /{tableNumber}, nhưng template dùng /submit nên có thể loại bỏ)
