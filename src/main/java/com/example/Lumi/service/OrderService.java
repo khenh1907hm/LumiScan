@@ -105,4 +105,25 @@ public class OrderService {
         public int getQuantity() { return quantity; }
         public void setQuantity(int quantity) { this.quantity = quantity; }
     }
+    @Transactional
+    public Order payOrder(Long orderId) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new IllegalArgumentException("Order không tồn tại");
+        }
+        Order order = orderOpt.get();
+        
+        // Cho phép thanh toán từ bất kỳ status nào (pending, preparing, served)
+        // Không cần check status nữa
+        
+        // Cập nhật status order
+        order.setStatus(Order.Status.paid);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        // Cập nhật status bàn về available
+        tableService.updateTableStatus(order.getTable().getTableNumber(), "available");
+
+        return order;
+    }
 }

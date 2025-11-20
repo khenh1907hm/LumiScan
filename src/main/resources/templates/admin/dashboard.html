@@ -1,94 +1,653 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - LumiScan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: #d7e0fa;
+        }
+        /* Sidebar Styles */
+        .sidebar {
+            transition: width 0.3s ease;
+            transition-delay: 0.1s;
+            border-radius: 24px;
+            margin: 16px 0 16px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .sidebar:hover {
+            width: 240px;
+            transition-delay: 0s;
+        }
+        .sidebar-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 12px;
+            margin: 0 auto;
+        }
+        .sidebar-item .icon {
+            min-width: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+        .sidebar-item .label {
+            opacity: 0;
+            width: 0;
+            margin-left: 0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            transition-delay: 0.1s;
+            overflow: hidden;
+        }
+        .sidebar:hover .sidebar-item {
+            width: calc(100% - 24px);
+            justify-content: flex-start;
+        }
+        .sidebar:hover .sidebar-item .label {
+            opacity: 1;
+            width: auto;
+            margin-left: 12px;
+            transition-delay: 0.15s;
+        }
+        .sidebar-item.active {
+            background: #ef4444;
+        }
+        .sidebar-item.active .icon {
+            color: white;
+        }
+        .sidebar-item.active .label {
+            color: white;
+        }
+        .sidebar-item:hover:not(.active) {
+            background: #f3f4f6;
+        }
+        .sidebar-item.active:hover {
+            background: #dc2626;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .chart-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="min-h-screen">
-        <!-- Navigation -->
-        <nav class="bg-indigo-600 text-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex">
-                        <div class="flex-shrink-0 flex items-center">
-                            <i class="fas fa-utensils text-2xl"></i>
-                            <span class="ml-2 text-xl font-bold">LumiScan</span>
+<body>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Left Sidebar -->
+        <aside class="sidebar w-20 bg-white flex flex-col items-center py-6 space-y-4">
+            <!-- Logo -->
+            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl mb-4">
+                A
+            </div>
+            
+            <!-- Navigation Icons -->
+            <div class="sidebar-item active" title="Dashboard">
+                <div class="icon">
+                    <i class="fas fa-th-large"></i>
+                </div>
+                <span class="label">Dashboard</span>
+            </div>
+            <a href="/admin/tables" class="sidebar-item" title="Bàn">
+                <div class="icon">
+                    <i class="fas fa-building"></i>
+                </div>
+                <span class="label">Bàn</span>
+            </a>
+            <div class="sidebar-item" title="Báo cáo">
+                <div class="icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <span class="label">Báo cáo</span>
+            </div>
+            <div class="sidebar-item" title="Tài liệu">
+                <div class="icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <span class="label">Tài liệu</span>
+            </div>
+            <div class="sidebar-item" title="Người dùng">
+                <div class="icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="label">Người dùng</span>
+            </div>
+            <div class="sidebar-item" title="Lịch">
+                <div class="icon">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <span class="label">Lịch</span>
+            </div>
+            <div class="sidebar-item" title="Cài đặt">
+                <div class="icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <span class="label">Cài đặt</span>
+            </div>
+            <div class="sidebar-item" title="Trợ giúp">
+                <div class="icon">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <span class="label">Trợ giúp</span>
+            </div>
+            
+            <!-- Bottom -->
+            <div class="mt-auto space-y-4 w-full flex flex-col items-center">
+                <form th:action="@{/logout}" method="post" class="w-full flex justify-center">
+                    <button type="submit" class="sidebar-item" title="Đăng xuất" style="width: 48px;">
+                        <div class="icon">
+                            <i class="fas fa-sign-out-alt"></i>
                         </div>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="px-3 py-2 rounded-md text-sm font-medium">
-                            Welcome, <span th:text="${user.username}" class="font-bold"></span>
-                        </span>
-                        <a href="/logout" class="ml-4 px-3 py-2 rounded-md text-sm font-medium bg-indigo-700 hover:bg-indigo-800">
-                            <i class="fas fa-sign-out-alt mr-1"></i>Logout
-                        </a>
-                    </div>
+                        <span class="label">Đăng xuất</span>
+                    </button>
+                </form>
+                <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <i class="fas fa-user text-gray-600"></i>
                 </div>
             </div>
-        </nav>
+        </aside>
 
         <!-- Main Content -->
-        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <!-- Stats -->
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-6">
-                <!-- Total Tables -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                                <i class="fas fa-table text-white text-xl"></i>
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-gray-200 px-8 py-6 rounded-2xl shadow-sm mx-4 mt-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">
+                            Hello, <span th:text="${user != null ? (user.fullName != null ? user.fullName : user.username) : 'Admin'}">Admin</span>
+                        </h1>
+                        <p class="text-gray-500 text-sm mt-1">Explore information and activity about your property</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <input type="text" placeholder="Search Anything..." 
+                                   class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 w-64">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        <div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white cursor-pointer">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-50">
+                            <i class="fas fa-comment text-gray-600"></i>
+                        </div>
+                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-50">
+                            <i class="fas fa-bell text-gray-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-8 mr-4">
+                <!-- Error Message -->
+                <div th:if="${error != null}" class="mb-6 bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span th:text="${error}">Lỗi</span>
+                    </div>
+                </div>
+                
+                <!-- Debug Panel (Toggle) -->
+                <div id="debugPanel" class="hidden mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-sm font-semibold text-yellow-800">🔍 Debug Information</h3>
+                        <button onclick="document.getElementById('debugPanel').classList.toggle('hidden')" 
+                                class="text-yellow-600 hover:text-yellow-800">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="debugContent" class="text-xs text-yellow-700 font-mono space-y-1">
+                        <p>Loading debug information...</p>
+                    </div>
+                </div>
+                
+                <!-- Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <!-- Doanh thu -->
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-home text-blue-600"></i>
                             </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Tables</dt>
-                                    <dd class="text-3xl font-semibold text-gray-900" th:text="${totalTables}">0</dd>
-                                </dl>
+                            <i class="fas fa-arrow-up text-green-500"></i>
+                        </div>
+                        <div class="mb-2">
+                            <p class="text-2xl font-bold text-gray-800">
+                                <span th:if="${revenue != null and revenue.doubleValue() >= 1000000}">
+                                    <span th:text="${#numbers.formatDecimal(revenue.divide(new java.math.BigDecimal(1000000)), 1, 1)} + 'tr'">25tr</span>
+                                </span>
+                                <span th:if="${revenue == null or revenue.doubleValue() < 1000000}">
+                                    <span th:text="${revenue != null ? (#numbers.formatDecimal(revenue, 0, 0) + ' VND') : '0 VND'}">0 VND</span>
+                                </span>
+                            </p>
+                            <p class="text-sm text-gray-500">Doanh thu</p>
+                        </div>
+                        <div class="flex items-center text-sm text-green-600">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            <span>20% Tổng doanh thu tăng tháng này</span>
+                        </div>
+                    </div>
+
+                    <!-- Số sản phẩm đã bán -->
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-list text-green-600"></i>
+                            </div>
+                            <i class="fas fa-arrow-up text-green-500"></i>
+                        </div>
+                        <div class="mb-2">
+                            <p class="text-2xl font-bold text-gray-800" th:text="${productsSold != null ? productsSold : 0}">320</p>
+                            <p class="text-sm text-gray-500">Số sản phẩm đã bán</p>
+                        </div>
+                        <div class="flex items-center text-sm text-green-600">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            <span>20% Tổng sản phẩm bán được</span>
+                        </div>
+                    </div>
+
+                    <!-- Lợi nhuận -->
+                    <div class="metric-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-dollar-sign text-yellow-600"></i>
+                            </div>
+                            <i class="fas fa-arrow-up text-green-500"></i>
+                        </div>
+                        <div class="mb-2">
+                            <p class="text-2xl font-bold text-gray-800">
+                                <span th:if="${profit != null and profit.doubleValue() >= 1000000}">
+                                    <span th:text="${#numbers.formatDecimal(profit.divide(new java.math.BigDecimal(1000000)), 1, 1)} + 'tr'">15tr</span>
+                                </span>
+                                <span th:if="${profit == null or profit.doubleValue() < 1000000}">
+                                    <span th:text="${profit != null ? (#numbers.formatDecimal(profit, 0, 0) + ' VND') : '0 VND'}">0 VND</span>
+                                </span>
+                            </p>
+                            <p class="text-sm text-gray-500">Lợi nhuận</p>
+                        </div>
+                        <div class="flex items-center text-sm text-green-600">
+                            <i class="fas fa-arrow-up mr-1"></i>
+                            <span>20% Tổng lợi nhuận tăng</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Bar Chart - Báo cáo -->
+                    <div class="chart-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Báo cáo</h3>
+                            <select class="text-sm border border-gray-300 rounded px-2 py-1">
+                                <option>11/09/25</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <p class="text-2xl font-bold text-gray-800">
+                                <span th:if="${revenue != null and revenue.doubleValue() >= 1000000}">
+                                    <span th:text="${#numbers.formatDecimal(revenue.divide(new java.math.BigDecimal(1000000)), 1, 1)} + 'tr VND'">25tr VND</span>
+                                </span>
+                                <span th:if="${revenue == null or revenue.doubleValue() < 1000000}">
+                                    <span th:text="${revenue != null ? (#numbers.formatDecimal(revenue, 0, 0) + ' VND') : '0 VND'}">0 VND</span>
+                                </span>
+                            </p>
+                            <p class="text-sm text-gray-500" th:text="${formattedCurrentDate}">Thu, 12 thg9</p>
+                        </div>
+                        <canvas id="barChart" height="200"></canvas>
+                    </div>
+
+                    <!-- Donut Chart - Chi tiết -->
+                    <div class="chart-card">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Chi tiết</h3>
+                        <div class="flex items-center justify-center">
+                            <div class="relative w-48 h-48">
+                                <canvas id="donutChart"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="text-center">
+                                        <p class="text-2xl font-bold text-gray-800">
+                                            <span th:if="${revenue != null and revenue.doubleValue() >= 1000000}">
+                                                <span th:text="${#numbers.formatDecimal(revenue.divide(new java.math.BigDecimal(1000000)), 0, 0)} + 'tr'">325tr</span>
+                                            </span>
+                                            <span th:if="${revenue == null or revenue.doubleValue() < 1000000}">0tr</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ml-8 space-y-3">
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-amber-200 rounded mr-2"></div>
+                                    <span class="text-sm text-gray-600">Cosmetology</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-green-200 rounded mr-2"></div>
+                                    <span class="text-sm text-gray-600">SPA</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-blue-200 rounded mr-2"></div>
+                                    <span class="text-sm text-gray-600">Hair</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 bg-pink-200 rounded mr-2"></div>
+                                    <span class="text-sm text-gray-600">Nail</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Active Tables -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
-                                <i class="fas fa-check-circle text-white text-xl"></i>
+                <!-- Lists Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Danh sách khách hàng liên hệ -->
+                    <div class="chart-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Danh sách khách hàng liên hệ</h3>
+                            <span class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">Tất cả</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div th:each="customer : ${recentCustomers}" class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-building text-gray-600"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-gray-800" th:text="${customer != null ? (customer.fullName != null ? customer.fullName : 'Khách hàng') : 'Khách hàng'}">Tấn Sáng Huỳnh</p>
+                                        <p class="text-xs text-gray-500" th:text="${formattedCurrentDateTime}">12 thg9 2025, 9:29</p>
+                                    </div>
+                                </div>
+                                <button class="px-4 py-1 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600">Xem</button>
                             </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Active Tables</dt>
-                                    <dd class="text-3xl font-semibold text-gray-900" th:text="${activeTables}">0</dd>
-                                </dl>
+                            <div th:if="${recentCustomers == null or #lists.isEmpty(recentCustomers)}" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-users text-4xl mb-2"></i>
+                                <p>Chưa có khách hàng liên hệ</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danh sách đơn hàng gần đây -->
+                    <div class="chart-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Danh sách đơn hàng gần đây</h3>
+                            <span class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">Tất cả</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div th:each="order : ${recentOrders}" class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                <div class="flex items-center space-x-3 flex-1">
+                                    <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                                        <i class="fas fa-bolt text-yellow-600"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-800">Đơn hàng ID: <span th:text="'DH-' + ${#strings.pad(order.id, 3, '0')}">DH-001</span></p>
+                                        <p class="text-xs text-gray-500" th:text="${order.table != null ? order.table.tableNumber : 'N/A'}">Bàn 1</p>
+                                        <p class="text-xs text-gray-500 mt-1" th:if="${orderFormattedDates != null and orderFormattedDates.containsKey(order.id)}">
+                                            <span th:text="${orderFormattedDates.get(order.id)}">12 thg9 2025, 9:29</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-medium text-gray-800">
+                                        <span th:if="${orderTotals != null and orderTotals.containsKey(order.id)}">
+                                            <span th:with="total=${orderTotals.get(order.id)}">
+                                                <span th:if="${total != null and total.doubleValue() >= 1000000}">
+                                                    <span th:text="${#numbers.formatDecimal(total.divide(new java.math.BigDecimal(1000000)), 1, 1)} + 'tr VND'">500,000 VND</span>
+                                                </span>
+                                                <span th:if="${total == null or total.doubleValue() < 1000000}">
+                                                    <span th:text="${total != null ? (#numbers.formatDecimal(total, 0, 0) + ' VND') : '0 VND'}">0 VND</span>
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span th:if="${orderTotals == null or !orderTotals.containsKey(order.id)}">0 VND</span>
+                                    </p>
+                                    <span class="text-xs px-2 py-1 rounded" 
+                                          th:class="${order.status != null and order.status.name() == 'paid'} ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'"
+                                          th:text="${order.status != null and order.status.name() == 'paid'} ? 'Đã thanh toán' : (order.status != null ? order.status.name() : 'Chưa xác định')">Đã thanh toán</span>
+                                </div>
+                            </div>
+                            <div th:if="${recentOrders == null or #lists.isEmpty(recentOrders)}" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-shopping-cart text-4xl mb-2"></i>
+                                <p>Chưa có đơn hàng nào</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <a href="/admin/tables" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-                        <i class="fas fa-table mr-2"></i>
-                        Manage Tables
-                    </a>
-                    <a href="/admin/employees" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-                        <i class="fas fa-users mr-2"></i>
-                        Manage Employees
-                    </a>
-                    <a href="/admin/reports" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                        <i class="fas fa-chart-bar mr-2"></i>
-                        View Reports
-                    </a>
-                </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
+
+    <script>
+        // Debug logging for all server data
+        console.log("=== DASHBOARD DATA DEBUG ===");
+        try {
+            const weeklyRevenue = /*[[${weeklyRevenue}]]*/ [0, 0, 0, 0, 0, 0, 0];
+            const revenue = /*[[${revenue}]]*/ null;
+            const profit = /*[[${profit}]]*/ null;
+            const productsSold = /*[[${productsSold}]]*/ 0;
+            const recentOrders = /*[[${recentOrders}]]*/ [];
+            const recentCustomers = /*[[${recentCustomers}]]*/ [];
+            const orderTotals = /*[[${orderTotals}]]*/ {};
+            const orderFormattedDates = /*[[${orderFormattedDates}]]*/ {};
+            const formattedCurrentDate = /*[[${formattedCurrentDate}]]*/ '';
+            const formattedCurrentDateTime = /*[[${formattedCurrentDateTime}]]*/ '';
+            const user = /*[[${user}]]*/ null;
+            
+            console.log("Weekly Revenue:", weeklyRevenue);
+            console.log("Weekly Revenue Type:", typeof weeklyRevenue, "Is Array:", Array.isArray(weeklyRevenue));
+            console.log("Revenue:", revenue);
+            console.log("Profit:", profit);
+            console.log("Products Sold:", productsSold);
+            console.log("Recent Orders:", recentOrders);
+            console.log("Recent Orders Count:", recentOrders ? recentOrders.length : 0);
+            console.log("Recent Customers:", recentCustomers);
+            console.log("Recent Customers Count:", recentCustomers ? recentCustomers.length : 0);
+            console.log("Order Totals:", orderTotals);
+            console.log("Order Totals Keys:", orderTotals ? Object.keys(orderTotals) : []);
+            console.log("Order Formatted Dates:", orderFormattedDates);
+            console.log("Formatted Current Date:", formattedCurrentDate);
+            console.log("Formatted Current DateTime:", formattedCurrentDateTime);
+            console.log("User:", user);
+            
+            // Check for missing data
+            const missingData = [];
+            if (!revenue && revenue !== 0) missingData.push("revenue");
+            if (!profit && profit !== 0) missingData.push("profit");
+            if (productsSold === null || productsSold === undefined) missingData.push("productsSold");
+            if (!recentOrders) missingData.push("recentOrders");
+            if (!recentCustomers) missingData.push("recentCustomers");
+            if (!weeklyRevenue || !Array.isArray(weeklyRevenue)) missingData.push("weeklyRevenue");
+            if (!orderTotals) missingData.push("orderTotals");
+            if (!orderFormattedDates) missingData.push("orderFormattedDates");
+            if (!formattedCurrentDate) missingData.push("formattedCurrentDate");
+            if (!formattedCurrentDateTime) missingData.push("formattedCurrentDateTime");
+            if (!user) missingData.push("user");
+            
+            if (missingData.length > 0) {
+                console.error("⚠️ MISSING DATA DETECTED:", missingData);
+                console.error("This may cause the interface to not display correctly!");
+                
+                // Show debug panel if data is missing
+                const debugPanel = document.getElementById('debugPanel');
+                const debugContent = document.getElementById('debugContent');
+                if (debugPanel && debugContent) {
+                    debugPanel.classList.remove('hidden');
+                    debugContent.innerHTML = `
+                        <p><strong>⚠️ Missing Data Detected:</strong></p>
+                        <ul class="list-disc list-inside">
+                            ${missingData.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                        <p class="mt-2"><strong>Check server logs for more details.</strong></p>
+                    `;
+                }
+            } else {
+                console.log("✅ All required data is present");
+            }
+            
+            // Update debug panel with data summary
+            const debugPanel = document.getElementById('debugPanel');
+            const debugContent = document.getElementById('debugContent');
+            if (debugPanel && debugContent && missingData.length === 0) {
+                // Only show if there are issues, but allow manual toggle
+                const debugInfo = `
+                    <p><strong>Data Status:</strong> ✅ All data present</p>
+                    <p><strong>Revenue:</strong> ${revenue || 'N/A'}</p>
+                    <p><strong>Orders:</strong> ${recentOrders ? recentOrders.length : 0}</p>
+                    <p><strong>Customers:</strong> ${recentCustomers ? recentCustomers.length : 0}</p>
+                `;
+                // Don't auto-show if everything is OK
+            }
+        } catch (e) {
+            console.error("❌ ERROR reading server data:", e);
+            console.error("Error details:", e.message, e.stack);
+            
+            // Show error in debug panel
+            const debugPanel = document.getElementById('debugPanel');
+            const debugContent = document.getElementById('debugContent');
+            if (debugPanel && debugContent) {
+                debugPanel.classList.remove('hidden');
+                debugPanel.className = debugPanel.className.replace('bg-yellow-50 border-yellow-200', 'bg-red-50 border-red-200');
+                debugContent.className = debugContent.className.replace('text-yellow-700', 'text-red-700');
+                debugContent.innerHTML = `
+                    <p><strong>❌ ERROR:</strong> ${e.message}</p>
+                    <p class="mt-2"><strong>Check browser console for full stack trace.</strong></p>
+                `;
+            }
+        }
+        
+        // Bar Chart
+        try {
+            const barCtx = document.getElementById('barChart');
+            if (!barCtx) {
+                console.error("❌ Bar chart canvas element not found!");
+                return;
+            }
+            console.log("Creating bar chart...");
+            const weeklyRevenue = /*[[${weeklyRevenue}]]*/ [0, 0, 0, 0, 0, 0, 0];
+            console.log("Weekly Revenue for chart:", weeklyRevenue);
+            const revenueData = Array.isArray(weeklyRevenue) ? weeklyRevenue.map(r => {
+                    if (!r) return 0;
+                    if (typeof r === 'number') return r / 1000000;
+                    if (typeof r === 'object' && r.doubleValue) return r.doubleValue() / 1000000;
+                    try {
+                        return parseFloat(r) / 1000000;
+                    } catch (e) {
+                        return 0;
+                    }
+                }) : [0, 0, 0, 0, 0, 0, 0];
+                
+                new Chart(barCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+                        datasets: [{
+                            label: 'Doanh thu',
+                            data: revenueData,
+                            backgroundColor: function(context) {
+                                if (context.dataIndex === 3) {
+                                    return 'rgba(139, 69, 19, 0.8)';
+                                }
+                                return 'rgba(245, 245, 220, 0.8)';
+                            },
+                            borderColor: function(context) {
+                                if (context.dataIndex === 3) {
+                                    return 'rgba(139, 69, 19, 1)';
+                                }
+                                return 'rgba(245, 245, 220, 1)';
+                            },
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value + 'tr';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log("✅ Bar chart created successfully");
+        } catch (e) {
+            console.error('❌ ERROR creating bar chart:', e);
+            console.error('Error details:', e.message);
+            console.error('Stack trace:', e.stack);
+        }
+
+        // Donut Chart
+        try {
+            const donutCtx = document.getElementById('donutChart');
+            if (!donutCtx) {
+                console.error("❌ Donut chart canvas element not found!");
+                return;
+            }
+            console.log("Creating donut chart...");
+            new Chart(donutCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Cosmetology', 'SPA', 'Hair', 'Nail'],
+                        datasets: [{
+                            data: [40, 30, 20, 10],
+                            backgroundColor: [
+                                'rgba(251, 191, 36, 0.8)',
+                                'rgba(34, 197, 94, 0.8)',
+                                'rgba(59, 130, 246, 0.8)',
+                                'rgba(236, 72, 153, 0.8)'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        cutout: '70%'
+                    }
+                });
+                console.log("✅ Donut chart created successfully");
+        } catch (e) {
+            console.error('❌ ERROR creating donut chart:', e);
+            console.error('Error details:', e.message);
+            console.error('Stack trace:', e.stack);
+        }
+        
+        console.log("=== DASHBOARD INITIALIZATION COMPLETE ===");
+    </script>
 </body>
 </html>

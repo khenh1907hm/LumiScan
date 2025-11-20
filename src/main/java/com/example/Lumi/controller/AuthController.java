@@ -1,6 +1,10 @@
 package com.example.Lumi.controller;
 
+import com.example.Lumi.model.Order;
+import com.example.Lumi.model.TableEntity;
 import com.example.Lumi.model.User;
+import com.example.Lumi.repository.OrderRepository;
+import com.example.Lumi.service.OrderService;
 import com.example.Lumi.service.TableService;
 import com.example.Lumi.service.UserService;
 import org.springframework.security.core.Authentication;
@@ -9,10 +13,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Controller
 public class AuthController {
@@ -20,10 +32,15 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private final TableService tableService;
     private final UserService userService;
+    private final OrderService orderService;
+    private final OrderRepository orderRepository;
 
-    public AuthController(TableService tableService, UserService userService) {
+    public AuthController(TableService tableService, UserService userService, 
+                         OrderService orderService, OrderRepository orderRepository) {
         this.tableService = tableService;
         this.userService = userService;
+        this.orderService = orderService;
+        this.orderRepository = orderRepository;
     }
 
     @GetMapping("/login")
@@ -37,26 +54,16 @@ public class AuthController {
     }
 
     @GetMapping("/")
-    public String home(Authentication authentication) {
-        logger.info("=== Starting home page processing ===");
-        logger.debug("Home page access - Authentication details: {}", authentication);
-        
-        if (authentication != null && authentication.isAuthenticated() 
-            && !authentication.getName().equals("anonymousUser")) {
-            
-            logger.info("Authenticated user: {}", authentication.getName());
-            logger.info("User authorities: {}", authentication.getAuthorities());
-            
-            if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN"))) {
-                logger.info("Redirecting admin to admin dashboard");
-                return "redirect:/admin/dashboard";
-            } else if (authentication.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_EMPLOYEE"))) {
-                logger.info("Redirecting employee to employee dashboard");
-                return "redirect:/employee/dashboard";
-            }
-        }
-        
-        logger.info("Showing home page");
+    public String home() {
+        // Luôn hiển thị trang quét mã QR, không redirect
+        logger.info("Showing home page (QR scanner)");
+        return "index";
+    }
+    
+    @GetMapping("/home")
+    public String homePage() {
+        // Endpoint riêng để customer có thể về trang quét mã mà không bị redirect
+        logger.info("Accessing home page (QR scanner) - no redirect");
         return "index";
     }
 
@@ -112,19 +119,238 @@ public class AuthController {
                 long activeTables = tableService.countActiveTables();
                 logger.debug("Active tables count: {}", activeTables);
                 model.addAttribute("activeTables", activeTables);
+                
+                // Calculate revenue (from paid orders this month)
+                LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+                List<Order> allOrders = orderRepository.findAll();
+                List<Order> paidOrdersThisMonth = allOrders.stream()
+                    .filter(o -> o != null && o.getStatus() == Order.Status.paid && o.getCreatedAt() != null)
+                    .filter(o -> o.getCreatedAt().toLocalDate().isAfter(startOfMonth.minusDays(1)))
+                    .collect(Collectors.toList());
+                
+                BigDecimal totalRevenue = BigDecimal.ZERO;
+                if (!paidOrdersThisMonth.isEmpty()) {
+                    totalRevenue = paidOrdersThisMonth.stream()
+                        .filter(o -> o.getItems() != null)
+                        .map(order -> {
+                            try {
+                                return orderService.calculateTotal(order);
+                            } catch (Exception e) {
+                                logger.warn("Error calculating total for order {}: {}", order.getId(), e.getMessage());
+                                return BigDecimal.ZERO;
+                            }
+                        })
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                }
+                
+                // Calculate profit (70% of revenue as example)
+                BigDecimal profit = totalRevenue.multiply(BigDecimal.valueOf(0.7));
+                
+                // Count products sold (sum of all order items quantities)
+                long productsSold = paidOrdersThisMonth.stream()
+                    .filter(o -> o.getItems() != null)
+                    .flatMap(o -> o.getItems().stream())
+                    .filter(item -> item != null)
+                    .mapToLong(item -> item.getQuantity())
+                    .sum();
+                
+                // Get recent orders (last 5) with totals calculated
+                List<Order> recentOrders = allOrders.stream()
+                    .filter(o -> o != null && o.getCreatedAt() != null)
+                    .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                    .limit(5)
+                    .collect(Collectors.toList());
+                
+                // Calculate totals for each order and store in a map
+                java.util.Map<Long, BigDecimal> orderTotals = new java.util.HashMap<>();
+                java.util.Map<Long, String> orderFormattedDates = new java.util.HashMap<>();
+                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, H:mm", new Locale("vi", "VN"));
+                
+                for (Order order : recentOrders) {
+                    try {
+                        if (order.getItems() != null && !order.getItems().isEmpty()) {
+                            BigDecimal total = orderService.calculateTotal(order);
+                            orderTotals.put(order.getId(), total);
+                        } else {
+                            orderTotals.put(order.getId(), BigDecimal.ZERO);
+                        }
+                    } catch (Exception e) {
+                        logger.warn("Error calculating total for order {}: {}", order.getId(), e.getMessage());
+                        orderTotals.put(order.getId(), BigDecimal.ZERO);
+                    }
+                    
+                    // Format order date
+                    if (order.getCreatedAt() != null) {
+                        try {
+                            String formattedDate = order.getCreatedAt().format(dateTimeFormatter);
+                            orderFormattedDates.put(order.getId(), formattedDate);
+                        } catch (Exception e) {
+                            orderFormattedDates.put(order.getId(), "");
+                        }
+                    }
+                }
+                model.addAttribute("orderTotals", orderTotals);
+                model.addAttribute("orderFormattedDates", orderFormattedDates);
+                
+                // Get recent customers (from orders)
+                List<User> recentCustomers = recentOrders.stream()
+                    .filter(o -> o.getTable() != null)
+                    .map(o -> o.getTable())
+                    .distinct()
+                    .limit(5)
+                    .map(t -> {
+                        // Create a simple user representation from table
+                        User u = new User();
+                        u.setFullName("Bàn " + t.getTableNumber());
+                        return u;
+                    })
+                    .collect(Collectors.toList());
+                
+                // Weekly revenue data for chart (last 7 days)
+                BigDecimal[] weeklyRevenue = new BigDecimal[7];
+                for (int i = 0; i < 7; i++) {
+                    LocalDate date = LocalDate.now().minusDays(6 - i);
+                    BigDecimal dayRevenue = allOrders.stream()
+                        .filter(o -> o != null && o.getStatus() == Order.Status.paid && o.getCreatedAt() != null)
+                        .filter(o -> o.getCreatedAt().toLocalDate().equals(date))
+                        .filter(o -> o.getItems() != null)
+                        .map(order -> {
+                            try {
+                                return orderService.calculateTotal(order);
+                            } catch (Exception e) {
+                                return BigDecimal.ZERO;
+                            }
+                        })
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    weeklyRevenue[i] = dayRevenue != null ? dayRevenue : BigDecimal.ZERO;
+                }
+                
+                // Format dates for template
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEE, d MMM", new Locale("vi", "VN"));
+                String formattedCurrentDate = LocalDate.now().format(dateFormatter);
+                String formattedCurrentDateTime = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("vi", "VN"))) + ", " + LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm"));
+                
+                // Log all data before adding to model
+                logger.info("=== Dashboard Data Summary ===");
+                logger.info("Revenue: {}", totalRevenue);
+                logger.info("Profit: {}", profit);
+                logger.info("Products Sold: {}", productsSold);
+                logger.info("Recent Orders Count: {}", recentOrders != null ? recentOrders.size() : 0);
+                logger.info("Recent Customers Count: {}", recentCustomers != null ? recentCustomers.size() : 0);
+                logger.info("Weekly Revenue Array: {}", java.util.Arrays.toString(weeklyRevenue));
+                logger.info("Order Totals Map Size: {}", orderTotals != null ? orderTotals.size() : 0);
+                logger.info("Order Formatted Dates Map Size: {}", orderFormattedDates != null ? orderFormattedDates.size() : 0);
+                logger.info("Formatted Current Date: {}", formattedCurrentDate);
+                logger.info("Formatted Current DateTime: {}", formattedCurrentDateTime);
+                
+                if (recentOrders != null && !recentOrders.isEmpty()) {
+                    logger.debug("Recent Orders Details:");
+                    for (Order order : recentOrders) {
+                        logger.debug("  Order ID: {}, Status: {}, CreatedAt: {}, Items: {}", 
+                            order.getId(), 
+                            order.getStatus(), 
+                            order.getCreatedAt(),
+                            order.getItems() != null ? order.getItems().size() : 0);
+                    }
+                } else {
+                    logger.warn("WARNING: recentOrders is null or empty!");
+                }
+                
+                if (orderTotals != null && !orderTotals.isEmpty()) {
+                    logger.debug("Order Totals Details:");
+                    orderTotals.forEach((id, total) -> {
+                        logger.debug("  Order ID {}: Total = {}", id, total);
+                    });
+                } else {
+                    logger.warn("WARNING: orderTotals is null or empty!");
+                }
+                
+                model.addAttribute("revenue", totalRevenue);
+                model.addAttribute("profit", profit);
+                model.addAttribute("productsSold", productsSold);
+                model.addAttribute("recentOrders", recentOrders);
+                model.addAttribute("recentCustomers", recentCustomers);
+                model.addAttribute("weeklyRevenue", weeklyRevenue);
+                model.addAttribute("formattedCurrentDate", formattedCurrentDate);
+                model.addAttribute("formattedCurrentDateTime", formattedCurrentDateTime);
+                
+                logger.info("All attributes added to model successfully");
+                
             } catch (Exception e) {
-                logger.error("Error loading table statistics", e);
-                // Set default values if table service fails
+                logger.error("=== ERROR loading dashboard statistics ===", e);
+                logger.error("Exception type: {}", e.getClass().getName());
+                logger.error("Exception message: {}", e.getMessage());
+                if (e.getCause() != null) {
+                    logger.error("Caused by: {}", e.getCause().getMessage());
+                }
+                logger.error("Stack trace:", e);
+                // Set default values if service fails
                 model.addAttribute("totalTables", 0);
                 model.addAttribute("activeTables", 0);
+                model.addAttribute("revenue", BigDecimal.ZERO);
+                model.addAttribute("profit", BigDecimal.ZERO);
+                model.addAttribute("productsSold", 0);
+                model.addAttribute("recentOrders", List.of());
+                model.addAttribute("recentCustomers", List.of());
+                model.addAttribute("weeklyRevenue", new BigDecimal[7]);
+                model.addAttribute("orderTotals", new java.util.HashMap<>());
+                model.addAttribute("orderFormattedDates", new java.util.HashMap<>());
+                model.addAttribute("formattedCurrentDate", "");
+                model.addAttribute("formattedCurrentDateTime", "");
             }
             
             model.addAttribute("user", currentUser);
+            
+            // Final check: Log all model attributes
+            logger.info("=== Final Model Attributes Check ===");
+            logger.info("User: {}", currentUser != null ? currentUser.getUsername() : "NULL");
+            logger.info("Model contains 'revenue': {}", model.containsAttribute("revenue"));
+            logger.info("Model contains 'profit': {}", model.containsAttribute("profit"));
+            logger.info("Model contains 'productsSold': {}", model.containsAttribute("productsSold"));
+            logger.info("Model contains 'recentOrders': {}", model.containsAttribute("recentOrders"));
+            logger.info("Model contains 'recentCustomers': {}", model.containsAttribute("recentCustomers"));
+            logger.info("Model contains 'weeklyRevenue': {}", model.containsAttribute("weeklyRevenue"));
+            logger.info("Model contains 'orderTotals': {}", model.containsAttribute("orderTotals"));
+            logger.info("Model contains 'orderFormattedDates': {}", model.containsAttribute("orderFormattedDates"));
+            logger.info("Model contains 'formattedCurrentDate': {}", model.containsAttribute("formattedCurrentDate"));
+            logger.info("Model contains 'formattedCurrentDateTime': {}", model.containsAttribute("formattedCurrentDateTime"));
+            
             logger.info("Rendering admin dashboard template");
             return "admin/dashboard";
         } catch (Exception e) {
-            logger.error("Error loading admin dashboard", e);
-            throw e;
+            logger.error("=== CRITICAL ERROR loading admin dashboard ===", e);
+            logger.error("Exception type: {}", e.getClass().getName());
+            logger.error("Exception message: {}", e.getMessage());
+            if (e.getCause() != null) {
+                logger.error("Caused by: {}", e.getCause().getMessage());
+            }
+            logger.error("Full stack trace:", e);
+            
+            // Set safe default values to prevent template errors
+            try {
+                User currentUser = userService.findByUsername(authentication.getName()).orElse(null);
+                model.addAttribute("user", currentUser);
+            } catch (Exception ex) {
+                logger.error("Error loading user for error page", ex);
+                model.addAttribute("user", null);
+            }
+            
+            model.addAttribute("totalTables", 0);
+            model.addAttribute("activeTables", 0);
+            model.addAttribute("revenue", BigDecimal.ZERO);
+            model.addAttribute("profit", BigDecimal.ZERO);
+            model.addAttribute("productsSold", 0);
+            model.addAttribute("recentOrders", Collections.emptyList());
+            model.addAttribute("recentCustomers", Collections.emptyList());
+            model.addAttribute("weeklyRevenue", new BigDecimal[7]);
+            model.addAttribute("orderTotals", new java.util.HashMap<>());
+            model.addAttribute("orderFormattedDates", new java.util.HashMap<>());
+            model.addAttribute("formattedCurrentDate", "");
+            model.addAttribute("formattedCurrentDateTime", "");
+            model.addAttribute("error", "Có lỗi xảy ra khi tải dashboard: " + e.getMessage());
+            
+            // Still return the template so user can see error message
+            return "admin/dashboard";
         }
     }
 
@@ -149,26 +375,78 @@ public class AuthController {
             
             logger.info("Loading employee dashboard data for user: {}", currentUser.getUsername());
             try {
-                long totalTables = tableService.countAllTables();
-                logger.debug("Total tables count: {}", totalTables);
-                model.addAttribute("totalTables", totalTables);
+                long totalTables = 0;
+                long activeTables = 0;
+                List<TableEntity> allTables = new ArrayList<>();
+                List<TableEntity> occupiedTables = new ArrayList<>();
                 
-                long activeTables = tableService.countActiveTables();
-                logger.debug("Active tables count: {}", activeTables);
+                try {
+                    totalTables = tableService.countAllTables();
+                    logger.debug("Total tables count: {}", totalTables);
+                } catch (Exception e) {
+                    logger.error("Error counting total tables", e);
+                }
+                
+                try {
+                    activeTables = tableService.countActiveTables();
+                    logger.debug("Active tables count: {}", activeTables);
+                } catch (Exception e) {
+                    logger.error("Error counting active tables", e);
+                }
+                
+                try {
+                    // Load all tables, especially occupied ones
+                    allTables = tableService.findAllTables();
+                    if (allTables != null) {
+                        occupiedTables = allTables.stream()
+                            .filter(t -> t != null && t.getStatus() != null && "occupied".equalsIgnoreCase(t.getStatus()))
+                            .collect(Collectors.toList());
+                        logger.debug("Loaded {} occupied tables out of {} total", occupiedTables.size(), allTables.size());
+                    } else {
+                        logger.warn("findAllTables returned null");
+                        allTables = new ArrayList<>();
+                    }
+                } catch (Exception e) {
+                    logger.error("Error loading tables list", e);
+                    allTables = new ArrayList<>();
+                    occupiedTables = new ArrayList<>();
+                }
+                
+                model.addAttribute("totalTables", totalTables);
                 model.addAttribute("activeTables", activeTables);
+                model.addAttribute("tables", allTables);
+                model.addAttribute("occupiedTables", occupiedTables);
             } catch (Exception e) {
                 logger.error("Error loading table statistics", e);
                 // Set default values if table service fails
                 model.addAttribute("totalTables", 0);
                 model.addAttribute("activeTables", 0);
+                model.addAttribute("tables", Collections.emptyList());
+                model.addAttribute("occupiedTables", Collections.emptyList());
             }
             
             model.addAttribute("user", currentUser);
             logger.info("Rendering employee dashboard template");
             return "employee/dashboard";
         } catch (Exception e) {
-            logger.error("Error loading employee dashboard", e);
-            throw e;
+            logger.error("=== CRITICAL ERROR loading employee dashboard ===", e);
+            logger.error("Exception type: {}", e.getClass().getName());
+            logger.error("Exception message: {}", e.getMessage());
+            if (e.getCause() != null) {
+                logger.error("Caused by: {}", e.getCause().getMessage());
+            }
+            logger.error("Full stack trace:", e);
+            
+            // Set safe default values to prevent template errors
+            model.addAttribute("user", null);
+            model.addAttribute("totalTables", 0);
+            model.addAttribute("activeTables", 0);
+            model.addAttribute("tables", Collections.emptyList());
+            model.addAttribute("occupiedTables", Collections.emptyList());
+            model.addAttribute("error", "Có lỗi xảy ra khi tải dashboard: " + e.getMessage());
+            
+            // Still return the template so user can see error message
+            return "employee/dashboard";
         }
     }
 }

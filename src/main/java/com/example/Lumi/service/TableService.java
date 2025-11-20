@@ -107,4 +107,16 @@ public class TableService {
             throw e;
         }
     }
+
+    // Regenerate QR code for existing table
+    public void regenerateQrCode(Long id) throws IOException, WriterException {
+        TableEntity table = tableRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid table Id:" + id));
+        
+        logger.info("Regenerating QR code for table: {}", table.getTableNumber());
+        String qrPath = qrCodeService.generateQrCode(table.getTableNumber());
+        table.setQrCode(qrPath);
+        tableRepository.save(table);
+        logger.info("QR code regenerated successfully: {}", qrPath);
+    }
 }

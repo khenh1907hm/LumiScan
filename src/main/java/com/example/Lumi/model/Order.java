@@ -24,7 +24,7 @@ public class Order {
 
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('pending','preparing','done','paid')")
+    @Column(columnDefinition = "ENUM('pending','preparing','served','done','paid')")
     private Status status = Status.pending;
 
     @Column(name = "created_at")
@@ -34,12 +34,13 @@ public class Order {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     // Một order có nhiều order_items
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> items;
 
     public enum Status {
         pending,
         preparing,
+        served,
         done,
         paid
     }

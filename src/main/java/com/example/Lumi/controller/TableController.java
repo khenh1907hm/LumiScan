@@ -6,7 +6,6 @@ import com.google.zxing.WriterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -80,5 +79,18 @@ public class TableController {
         logger.info("Toggling status for table id: {}", id);
         tableService.toggleTableStatus(id);
         return "redirect:/admin/tables";
+    }
+
+    @GetMapping("/regenerate-qr/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String regenerateQrCode(@PathVariable Long id) {
+        logger.info("Regenerating QR code for table id: {}", id);
+        try {
+            tableService.regenerateQrCode(id);
+            return "redirect:/admin/tables?success=QR code regenerated";
+        } catch (Exception e) {
+            logger.error("Error regenerating QR code: ", e);
+            return "redirect:/admin/tables?error=Failed to regenerate QR code";
+        }
     }
 }

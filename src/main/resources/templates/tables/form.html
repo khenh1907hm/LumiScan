@@ -1,28 +1,242 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Form Bàn</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chỉnh sửa Bàn - LumiScan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #d7e0fa;
+        }
+        /* Sidebar Styles */
+        .sidebar {
+            transition: width 0.3s ease;
+            transition-delay: 0.1s;
+            border-radius: 24px;
+            margin: 16px 0 16px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .sidebar:hover {
+            width: 240px;
+            transition-delay: 0s;
+        }
+        .sidebar-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 12px;
+            margin: 0 auto;
+        }
+        .sidebar-item .icon {
+            min-width: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+        .sidebar-item .label {
+            opacity: 0;
+            width: 0;
+            margin-left: 0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            transition-delay: 0.1s;
+            overflow: hidden;
+        }
+        .sidebar:hover .sidebar-item {
+            width: calc(100% - 24px);
+            justify-content: flex-start;
+        }
+        .sidebar:hover .sidebar-item .label {
+            opacity: 1;
+            width: auto;
+            margin-left: 12px;
+            transition-delay: 0.15s;
+        }
+        .sidebar-item.active {
+            background: #ef4444;
+        }
+        .sidebar-item.active .icon {
+            color: white;
+        }
+        .sidebar-item.active .label {
+            color: white;
+        }
+        .sidebar-item:hover:not(.active) {
+            background: #f3f4f6;
+        }
+        .sidebar-item.active:hover {
+            background: #dc2626;
+        }
+        .content-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
-<h1>Thông tin bàn</h1>
-<form th:action="@{/tables}" th:object="${table}" method="post">
-    <input type="hidden" th:field="*{id}"/>
-    <p>
-        <label>Số bàn: </label>
-        <input type="text" th:field="*{tableNumber}" required/>
-    </p>
-    <p>
-        <label>QR Code URL: </label>
-        <input type="text" th:field="*{qrCode}"/>
-    </p>
-    <p>
-        <label>Trạng thái: </label>
-        <select th:field="*{status}">
-            <option value="AVAILABLE">AVAILABLE</option>
-            <option value="OCCUPIED">OCCUPIED</option>
-        </select>
-    </p>
-    <button type="submit">Lưu</button>
-</form>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Left Sidebar -->
+        <aside class="sidebar w-20 bg-white flex flex-col items-center py-6 space-y-4">
+            <!-- Logo -->
+            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl mb-4">
+                A
+            </div>
+            
+            <!-- Navigation Icons -->
+            <a href="/admin/dashboard" class="sidebar-item" title="Dashboard">
+                <div class="icon">
+                    <i class="fas fa-th-large"></i>
+                </div>
+                <span class="label">Dashboard</span>
+            </a>
+            <a href="/admin/tables" class="sidebar-item active" title="Bàn">
+                <div class="icon">
+                    <i class="fas fa-building"></i>
+                </div>
+                <span class="label">Bàn</span>
+            </a>
+            <div class="sidebar-item" title="Báo cáo">
+                <div class="icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <span class="label">Báo cáo</span>
+            </div>
+            <div class="sidebar-item" title="Tài liệu">
+                <div class="icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <span class="label">Tài liệu</span>
+            </div>
+            <div class="sidebar-item" title="Người dùng">
+                <div class="icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="label">Người dùng</span>
+            </div>
+            <div class="sidebar-item" title="Lịch">
+                <div class="icon">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <span class="label">Lịch</span>
+            </div>
+            <div class="sidebar-item" title="Cài đặt">
+                <div class="icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <span class="label">Cài đặt</span>
+            </div>
+            <div class="sidebar-item" title="Trợ giúp">
+                <div class="icon">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <span class="label">Trợ giúp</span>
+            </div>
+            
+            <!-- Bottom -->
+            <div class="mt-auto space-y-4 w-full flex flex-col items-center">
+                <form th:action="@{/logout}" method="post" class="w-full flex justify-center">
+                    <button type="submit" class="sidebar-item" title="Đăng xuất" style="width: 48px;">
+                        <div class="icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <span class="label">Đăng xuất</span>
+                    </button>
+                </form>
+                <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <i class="fas fa-user text-gray-600"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-gray-200 px-8 py-6 rounded-2xl shadow-sm mx-4 mt-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Chỉnh sửa Bàn</h1>
+                        <p class="text-gray-500 text-sm mt-1">Cập nhật thông tin bàn</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="/admin/tables"
+                           class="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors inline-flex items-center">
+                            <i class="fas fa-arrow-left mr-2"></i> Quay lại
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-8 mr-4">
+                <div class="content-card max-w-2xl">
+                    <form th:action="@{'/admin/tables/' + ${table.id}}" th:object="${table}" method="post" class="space-y-6">
+                        <input type="hidden" th:field="*{id}"/>
+                        
+                        <div>
+                            <label for="tableNumber" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-hashtag mr-2 text-gray-400"></i>Số bàn
+                            </label>
+                            <input type="text" 
+                                   id="tableNumber"
+                                   th:field="*{tableNumber}" 
+                                   required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                   placeholder="Nhập số bàn">
+                        </div>
+
+                        <div>
+                            <label for="qrCode" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-qrcode mr-2 text-gray-400"></i>QR Code URL
+                            </label>
+                            <input type="text" 
+                                   id="qrCode"
+                                   th:field="*{qrCode}" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                   placeholder="URL của mã QR code">
+                        </div>
+
+                        <div>
+                            <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-info-circle mr-2 text-gray-400"></i>Trạng thái
+                            </label>
+                            <select id="status"
+                                    th:field="*{status}" 
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                                <option value="AVAILABLE">Có sẵn</option>
+                                <option value="OCCUPIED">Đang sử dụng</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center space-x-4 pt-4">
+                            <button type="submit"
+                                    class="px-6 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors inline-flex items-center">
+                                <i class="fas fa-save mr-2"></i> Lưu thay đổi
+                            </button>
+                            <a href="/admin/tables"
+                               class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors inline-flex items-center">
+                                <i class="fas fa-times mr-2"></i> Hủy
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
 </body>
 </html>

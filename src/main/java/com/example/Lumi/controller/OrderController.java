@@ -16,12 +16,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Controller
 @RequestMapping("/order")
@@ -56,18 +52,27 @@ public class OrderController {
     @GetMapping("/{tableNumber}")
     @PreAuthorize("permitAll()")
     public String showMenu(@PathVariable String tableNumber, Model model) {
+        System.out.println("=== ORDER CONTROLLER: showMenu called ===");
+        System.out.println("Table Number: " + tableNumber);
+        System.out.println("Request URL: /order/" + tableNumber);
+        
         try {
             // Kiểm tra bàn tồn tại
             var table = tableService.findByTableNumber(tableNumber);
             if (table.isEmpty()) {
+                System.out.println("ERROR: Table not found: " + tableNumber);
                 model.addAttribute("error", "Bàn không tồn tại");
                 return "error";
             }
 
-            // Kiểm tra trạng thái bàn
+            System.out.println("Table found: " + table.get().getTableNumber() + ", Status: " + table.get().getStatus());
+
+            // Kiểm tra trạng thái bàn - nếu occupied thì hiển thị ảnh table_in_use
             if (!"available".equalsIgnoreCase(table.get().getStatus())) {
-                model.addAttribute("error", "Bàn đang được sử dụng");
-                return "error";
+                System.out.println("WARNING: Table status is not available: " + table.get().getStatus());
+                model.addAttribute("tableNumber", tableNumber);
+                model.addAttribute("tableStatus", table.get().getStatus());
+                return "customer/table-in-use";
             }
 
             // Đưa dữ liệu ra giao diện
@@ -75,9 +80,12 @@ public class OrderController {
             model.addAttribute("categories", categoryService.getAllCategories());
             model.addAttribute("menuItems", menuItemService.getAllMenuItems());
 
+            System.out.println("SUCCESS: Returning customer/order template");
             return "customer/order";
 
         } catch (Exception e) {
+            System.out.println("EXCEPTION in showMenu: " + e.getMessage());
+            e.printStackTrace();
             model.addAttribute("error", "Có lỗi xảy ra: " + e.getMessage());
             return "error";
         }
@@ -99,7 +107,12 @@ public class OrderController {
                 orderItems.add(itemReq);
             }
             // Tạo order
+            System.out.println("=== Creating order for table: " + request.getTableNumber() + " ===");
+            System.out.println("Order items count: " + orderItems.size());
             Order order = orderService.createOrder(request.getTableNumber(), orderItems);
+            System.out.println("Order created successfully! Order ID: " + order.getId());
+            System.out.println("Order status: " + order.getStatus());
+            System.out.println("Order items count: " + (order.getItems() != null ? order.getItems().size() : 0));
 
             // Gửi thông báo realtime đến employee
             messagingTemplate.convertAndSend("/topic/orders",
@@ -123,26 +136,81 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> getOrderByTable(@PathVariable String tableNumber) {
         Map<String, Object> response = new HashMap<>();
         try {
+            System.out.println("=== getOrderByTable called for table: " + tableNumber + " ===");
+            
             var tableOpt = tableService.findByTableNumber(tableNumber);
             if (tableOpt.isEmpty()) {
+                System.out.println("ERROR: Table not found: " + tableNumber);
                 response.put("success", false);
                 response.put("message", "Bàn không tồn tại");
                 return ResponseEntity.badRequest().body(response);
             }
             var table = tableOpt.get();
-            // Lấy order pending hôm nay (giả sử repo có method này)
-            List<Order> orders = orderRepository.findByTableAndStatusAndCreatedAt(table, Order.Status.pending, LocalDate.now());
+            System.out.println("Table found: ID=" + table.getId() + ", Status=" + table.getStatus());
+            
+            // Lấy tất cả order của bàn này (không filter theo status hoặc date)
+            List<Order> allOrders = orderRepository.findAll();
+            System.out.println("Total orders in DB: " + allOrders.size());
+            
+            // Filter orders của bàn này, chưa thanh toán
+            List<Order> orders = allOrders.stream()
+                .filter(o -> {
+                    if (o.getTable() == null) return false;
+                    boolean matches = o.getTable().getId().equals(table.getId());
+                    if (matches) {
+                        System.out.println("Found order: ID=" + o.getId() + ", Status=" + o.getStatus() + ", CreatedAt=" + o.getCreatedAt());
+                    }
+                    return matches;
+                })
+                .filter(o -> o.getStatus() != Order.Status.paid && o.getStatus() != Order.Status.done)
+                .sorted((o1, o2) -> o2.getCreatedAt().compareTo(o1.getCreatedAt())) // Mới nhất trước
+                .toList();
+            
+            System.out.println("Filtered orders for table " + tableNumber + ": " + orders.size());
+            
             if (orders.isEmpty()) {
+                System.out.println("WARNING: No active orders found for table " + tableNumber);
                 response.put("success", false);
-                response.put("message", "Không có order nào");
+                response.put("message", "Không có order nào cho bàn này");
                 return ResponseEntity.ok(response);
             }
-            Order order = orders.get(0); // Giả sử 1 bàn 1 order active
+            
+            Order order = orders.get(0); // Lấy order mới nhất
+            System.out.println("Returning order: ID=" + order.getId() + ", Status=" + order.getStatus() + ", Items=" + (order.getItems() != null ? order.getItems().size() : 0));
+            
+            // Tạo DTO để tránh circular reference
+            Map<String, Object> orderDTO = new HashMap<>();
+            orderDTO.put("id", order.getId());
+            orderDTO.put("status", order.getStatus().toString());
+            orderDTO.put("createdAt", order.getCreatedAt().toString());
+            orderDTO.put("tableNumber", order.getTable().getTableNumber());
+            
+            // Convert items to DTO
+            List<Map<String, Object>> itemsDTO = new ArrayList<>();
+            if (order.getItems() != null) {
+                for (var item : order.getItems()) {
+                    Map<String, Object> itemDTO = new HashMap<>();
+                    itemDTO.put("id", item.getId());
+                    itemDTO.put("quantity", item.getQuantity());
+                    itemDTO.put("price", item.getPrice());
+                    
+                    Map<String, Object> menuItemDTO = new HashMap<>();
+                    menuItemDTO.put("id", item.getMenuItem().getId());
+                    menuItemDTO.put("name", item.getMenuItem().getName());
+                    menuItemDTO.put("price", item.getMenuItem().getPrice());
+                    itemDTO.put("menuItem", menuItemDTO);
+                    
+                    itemsDTO.add(itemDTO);
+                }
+            }
+            orderDTO.put("items", itemsDTO);
+            
             response.put("success", true);
-            response.put("order", order);
+            response.put("order", orderDTO);
             response.put("total", orderService.calculateTotal(order));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            e.printStackTrace();
             response.put("success", false);
             response.put("message", "Lỗi: " + e.getMessage());
             return ResponseEntity.badRequest().body(response);
@@ -245,4 +313,23 @@ public class OrderController {
         public List<OrderService.OrderItemRequest> getOrderItems() { return orderItems; }
         public void setOrderItems(List<OrderService.OrderItemRequest> orderItems) { this.orderItems = orderItems; }
     }
+
+    @PostMapping("/pay/{orderId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> payOrder(@PathVariable Long orderId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Order order = orderService.payOrder(orderId);
+            // Gửi thông báo realtime
+            messagingTemplate.convertAndSend("/topic/orders", "Order paid for table " + order.getTable().getTableNumber());
+            response.put("success", true);
+            response.put("message", "Thanh toán thành công");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
 }

@@ -1,7 +1,5 @@
 package com.example.Lumi.model;
 
-import com.example.Lumi.model.MenuItem;
-import com.example.Lumi.model.Order;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,7 +22,7 @@ public class OrderItem {
     private Order order;
 
     // Gắn với món ăn
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "menu_item_id", nullable = false)
     private MenuItem menuItem;
 

@@ -11,9 +11,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -27,18 +26,21 @@ public class SecurityConfig {
         http
             .headers(headers -> headers.frameOptions().sameOrigin())
             .authorizeHttpRequests(authz -> authz
+                // WebSocket endpoint - MUST be first
+                .requestMatchers("/ws/**").permitAll()
+                // Customer routes - MUST be before other routes to avoid conflicts
+                .requestMatchers("/order/**").permitAll()
                 // Static resources & public pages
                 .requestMatchers(
-                    "/", "/login", "/users/register", "/error",
+                    "/", "/home", "/login", "/users/register", "/error",
                     "/static/**", "/css/**", "/js/**", "/images/**", 
-                    "/qrcodes/**", "/webjars/**", "/favicon.ico"
+                    "/qrcodes/**", "/uploads/**", "/webjars/**", "/favicon.ico"
                 ).permitAll()
                 // Admin routes
-                .requestMatchers("/admin/**", "/tables/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/tables/**").hasAuthority("ROLE_ADMIN")
                 // Employee routes
                 .requestMatchers("/employee/**").hasAuthority("ROLE_EMPLOYEE")
-                // Customer routes
-                .requestMatchers("/order/**").permitAll()
                 // Default security
                 .anyRequest().authenticated()
             )
@@ -52,7 +54,23 @@ public class SecurityConfig {
                     .successHandler((request, response, authentication) -> {
                         logger.info("Login successful for user: {}", authentication.getName());
                         logger.info("User roles: {}", authentication.getAuthorities());
-                        response.sendRedirect("/");
+                        
+                        // Redirect based on user role
+                        String redirectUrl = "/";
+                        for (GrantedAuthority authority : authentication.getAuthorities()) {
+                            String role = authority.getAuthority();
+                            if ("ROLE_ADMIN".equals(role)) {
+                                redirectUrl = "/admin/dashboard";
+                                logger.info("Redirecting admin to: {}", redirectUrl);
+                                break;
+                            } else if ("ROLE_EMPLOYEE".equals(role)) {
+                                redirectUrl = "/employee/dashboard";
+                                logger.info("Redirecting employee to: {}", redirectUrl);
+                                break;
+                            }
+                        }
+                        
+                        response.sendRedirect(redirectUrl);
                     })
                     .failureHandler((request, response, exception) -> {
                         logger.error("Login failed: {}", exception.getMessage());

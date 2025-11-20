@@ -1,94 +1,300 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Dashboard - LumiScan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #d7e0fa;
+        }
+        /* Sidebar Styles */
+        .sidebar {
+            transition: width 0.3s ease;
+            transition-delay: 0.1s;
+            border-radius: 24px;
+            margin: 16px 0 16px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .sidebar:hover {
+            width: 240px;
+            transition-delay: 0s;
+        }
+        .sidebar-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 12px;
+            margin: 0 auto;
+        }
+        .sidebar-item .icon {
+            min-width: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+        .sidebar-item .label {
+            opacity: 0;
+            width: 0;
+            margin-left: 0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            transition-delay: 0.1s;
+            overflow: hidden;
+        }
+        .sidebar:hover .sidebar-item {
+            width: calc(100% - 24px);
+            justify-content: flex-start;
+        }
+        .sidebar:hover .sidebar-item .label {
+            opacity: 1;
+            width: auto;
+            margin-left: 12px;
+            transition-delay: 0.15s;
+        }
+        .sidebar-item.active {
+            background: #ef4444;
+        }
+        .sidebar-item.active .icon {
+            color: white;
+        }
+        .sidebar-item.active .label {
+            color: white;
+        }
+        .sidebar-item:hover:not(.active) {
+            background: #f3f4f6;
+        }
+        .sidebar-item.active:hover {
+            background: #dc2626;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .table-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .table-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="min-h-screen">
-        <!-- Navigation -->
-        <nav class="bg-green-600 text-white shadow-lg">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex">
-                        <div class="flex-shrink-0 flex items-center">
-                            <i class="fas fa-utensils text-2xl"></i>
-                            <span class="ml-2 text-xl font-bold">LumiScan</span>
+<body>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Left Sidebar -->
+        <aside class="sidebar w-20 bg-white flex flex-col items-center py-6 space-y-4">
+            <!-- Logo -->
+            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl mb-4">
+                E
+            </div>
+            
+            <!-- Navigation Icons -->
+            <div class="sidebar-item active" title="Dashboard">
+                <div class="icon">
+                    <i class="fas fa-th-large"></i>
+                </div>
+                <span class="label">Dashboard</span>
+            </div>
+            <a href="/employee/tables" class="sidebar-item" title="Quản lý bàn">
+                <div class="icon">
+                    <i class="fas fa-table"></i>
+                </div>
+                <span class="label">Quản lý bàn</span>
+            </a>
+            <div class="sidebar-item" title="Đơn hàng">
+                <div class="icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <span class="label">Đơn hàng</span>
+            </div>
+            <div class="sidebar-item" title="Thông báo">
+                <div class="icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <span class="label">Thông báo</span>
+            </div>
+            
+            <!-- Bottom -->
+            <div class="mt-auto space-y-4 w-full flex flex-col items-center">
+                <form th:action="@{/logout}" method="post" class="w-full flex justify-center">
+                    <button type="submit" class="sidebar-item" title="Đăng xuất" style="width: 48px;">
+                        <div class="icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <span class="label">Đăng xuất</span>
+                    </button>
+                </form>
+                <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <i class="fas fa-user text-gray-600"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-gray-200 px-8 py-6 rounded-2xl shadow-sm mx-4 mt-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">
+                            Xin chào, <span th:text="${user != null ? (user.fullName != null ? user.fullName : user.username) : 'Nhân viên'}">Nhân viên</span>
+                        </h1>
+                        <p class="text-gray-500 text-sm mt-1">Quản lý bàn và đơn hàng</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-50">
+                            <i class="fas fa-bell text-gray-600"></i>
                         </div>
                     </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto px-8 py-6">
+                <!-- Error Message -->
+                <div th:if="${error != null}" class="mb-6 bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4">
                     <div class="flex items-center">
-                        <span class="px-3 py-2 rounded-md text-sm font-medium">
-                            Welcome, <span th:text="${user.username}" class="font-bold"></span>
-                        </span>
-                        <a href="/logout" class="ml-4 px-3 py-2 rounded-md text-sm font-medium bg-green-700 hover:bg-green-800">
-                            <i class="fas fa-sign-out-alt mr-1"></i>Logout
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <span th:text="${error}">Lỗi</span>
+                    </div>
+                </div>
+                
+                <!-- Active Tables Section - Hiển thị đầu tiên -->
+                <div class="mb-6" th:if="${occupiedTables != null and !#lists.isEmpty(occupiedTables)}">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                            Bàn đang hoạt động
+                        </h2>
+                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium" th:text="${#lists.size(occupiedTables)} + ' bàn'">0 bàn</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div th:each="table : ${occupiedTables}" 
+                             th:if="${table != null}"
+                             class="table-card border-l-4 border-red-500">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="text-lg font-semibold text-gray-800">Bàn <span th:text="${table.tableNumber != null ? table.tableNumber : 'N/A'}">1</span></h3>
+                                <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                                    Đang dùng
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between mt-4">
+                                <a th:href="@{/employee/tables}" 
+                                   class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                    <i class="fas fa-eye mr-1"></i>Xem chi tiết
+                                </a>
+                                <button th:if="${table.tableNumber != null}"
+                                        th:attr="onclick='showOrderModal(\'' + ${table.tableNumber} + '\')'"
+                                        class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm">
+                                    <i class="fas fa-clipboard-list mr-1"></i>Xem đơn
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State for Active Tables -->
+                <div class="mb-6" th:if="${occupiedTables == null or #lists.isEmpty(occupiedTables)}">
+                    <div class="bg-white rounded-2xl p-8 text-center">
+                        <i class="fas fa-check-circle text-6xl text-green-300 mb-4"></i>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">Không có bàn nào đang hoạt động</h3>
+                        <p class="text-gray-500">Tất cả bàn đều trống</p>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                    <!-- Total Tables -->
+                    <div class="metric-card">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-blue-100 rounded-xl p-4">
+                                <i class="fas fa-table text-blue-600 text-2xl"></i>
+                            </div>
+                            <div class="ml-5 flex-1">
+                                <p class="text-sm font-medium text-gray-500">Tổng số bàn</p>
+                                <p class="text-3xl font-bold text-gray-900" th:text="${totalTables}">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Tables -->
+                    <div class="metric-card">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-green-100 rounded-xl p-4">
+                                <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                            </div>
+                            <div class="ml-5 flex-1">
+                                <p class="text-sm font-medium text-gray-500">Bàn đang hoạt động</p>
+                                <p class="text-3xl font-bold text-gray-900" th:text="${activeTables}">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Available Tables -->
+                    <div class="metric-card">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-gray-100 rounded-xl p-4">
+                                <i class="fas fa-circle text-gray-400 text-2xl"></i>
+                            </div>
+                            <div class="ml-5 flex-1">
+                                <p class="text-sm font-medium text-gray-500">Bàn trống</p>
+                                <p class="text-3xl font-bold text-gray-900" th:text="${totalTables - activeTables}">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="metric-card">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Thao tác nhanh</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <a href="/employee/tables" 
+                           class="flex items-center px-4 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all">
+                            <i class="fas fa-table mr-3"></i>
+                            <span>Quản lý bàn</span>
+                        </a>
+                        <a href="/employee/tables" 
+                           class="flex items-center px-4 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all">
+                            <i class="fas fa-clipboard-list mr-3"></i>
+                            <span>Xem đơn hàng</span>
+                        </a>
+                        <a href="/employee/tables" 
+                           class="flex items-center px-4 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all">
+                            <i class="fas fa-qrcode mr-3"></i>
+                            <span>Mã QR</span>
                         </a>
                     </div>
                 </div>
-            </div>
-        </nav>
-
-        <!-- Main Content -->
-        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <!-- Stats -->
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-6">
-                <!-- Total Tables -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
-                                <i class="fas fa-table text-white text-xl"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Tables</dt>
-                                    <dd class="text-3xl font-semibold text-gray-900" th:text="${totalTables}">0</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Active Tables -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                                <i class="fas fa-check-circle text-white text-xl"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Active Tables</dt>
-                                    <dd class="text-3xl font-semibold text-gray-900" th:text="${activeTables}">0</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <a href="/employee/tables" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-                        <i class="fas fa-table mr-2"></i>
-                        View Tables
-                    </a>
-                    <a href="/employee/orders" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                        <i class="fas fa-clipboard-list mr-2"></i>
-                        Manage Orders
-                    </a>
-                    <a href="/employee/qr-codes" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700">
-                        <i class="fas fa-qrcode mr-2"></i>
-                        View QR Codes
-                    </a>
-                </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
+
+    <script>
+        // Function to show order modal (if needed)
+        function showOrderModal(tableNumber) {
+            window.location.href = '/employee/tables?table=' + tableNumber;
+        }
+    </script>
 </body>
 </html>

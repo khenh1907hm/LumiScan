@@ -1,176 +1,311 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Table Management - LumiScan</title>
-
-    <!-- Alpine.js -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
-    <!-- Tailwind CSS -->
+    <title>Quản lý Bàn - LumiScan</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'glass': 'rgba(255, 255, 255, 0.25)',
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
-
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <style>
-        .glass-card {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        body {
+            background: #d7e0fa;
         }
-
-        .glass-button {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+        /* Sidebar Styles */
+        .sidebar {
+            transition: width 0.3s ease;
+            transition-delay: 0.1s;
+            border-radius: 24px;
+            margin: 16px 0 16px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .sidebar:hover {
+            width: 240px;
+            transition-delay: 0s;
+        }
+        .sidebar-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 0 12px;
+            margin: 0 auto;
+        }
+        .sidebar-item .icon {
+            min-width: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
             transition: all 0.3s ease;
         }
-
-        .glass-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        .sidebar-item .label {
+            opacity: 0;
+            width: 0;
+            margin-left: 0;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            transition-delay: 0.1s;
+            overflow: hidden;
         }
-
-        body {
-            background: linear-gradient(45deg, #6366f1, #8b5cf6);
-            min-height: 100vh;
+        .sidebar:hover .sidebar-item {
+            width: calc(100% - 24px);
+            justify-content: flex-start;
+        }
+        .sidebar:hover .sidebar-item .label {
+            opacity: 1;
+            width: auto;
+            margin-left: 12px;
+            transition-delay: 0.15s;
+        }
+        .sidebar-item.active {
+            background: #ef4444;
+        }
+        .sidebar-item.active .icon {
+            color: white;
+        }
+        .sidebar-item.active .label {
+            color: white;
+        }
+        .sidebar-item:hover:not(.active) {
+            background: #f3f4f6;
+        }
+        .sidebar-item.active:hover {
+            background: #dc2626;
+        }
+        .content-card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
     </style>
 </head>
-
-<body class="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-<div class="container mx-auto px-4 py-8">
-
-    <!-- Error message -->
-    <div th:if="${error}"
-         class="mb-4 p-4 rounded-lg glass-card text-red-400 text-center"
-         th:text="${error}">
-    </div>
-
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8 space-y-4 md:space-y-0">
-        <h1 class="text-4xl font-bold text-white tracking-tight">Table Management</h1>
-        <div sec:authorize="hasRole('ADMIN')" class="flex space-x-4">
-            <a href="/admin/dashboard"
-               class="glass-button px-6 py-3 rounded-xl text-white inline-flex items-center hover:scale-105">
-                <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+<body>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Left Sidebar -->
+        <aside class="sidebar w-20 bg-white flex flex-col items-center py-6 space-y-4">
+            <!-- Logo -->
+            <div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xl mb-4">
+                A
+            </div>
+            
+            <!-- Navigation Icons -->
+            <a href="/admin/dashboard" class="sidebar-item" title="Dashboard">
+                <div class="icon">
+                    <i class="fas fa-th-large"></i>
+                </div>
+                <span class="label">Dashboard</span>
             </a>
-            <a href="/admin/tables/new"
-               class="glass-button px-6 py-3 rounded-xl text-white inline-flex items-center hover:scale-105">
-                <i class="fas fa-plus mr-2"></i> Add New Table
-            </a>
+            <div class="sidebar-item active" title="Bàn">
+                <div class="icon">
+                    <i class="fas fa-building"></i>
+                </div>
+                <span class="label">Bàn</span>
+            </div>
+            <div class="sidebar-item" title="Báo cáo">
+                <div class="icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <span class="label">Báo cáo</span>
+            </div>
+            <div class="sidebar-item" title="Tài liệu">
+                <div class="icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <span class="label">Tài liệu</span>
+            </div>
+            <div class="sidebar-item" title="Người dùng">
+                <div class="icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="label">Người dùng</span>
+            </div>
+            <div class="sidebar-item" title="Lịch">
+                <div class="icon">
+                    <i class="fas fa-calendar"></i>
+                </div>
+                <span class="label">Lịch</span>
+            </div>
+            <div class="sidebar-item" title="Cài đặt">
+                <div class="icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <span class="label">Cài đặt</span>
+            </div>
+            <div class="sidebar-item" title="Trợ giúp">
+                <div class="icon">
+                    <i class="fas fa-question-circle"></i>
+                </div>
+                <span class="label">Trợ giúp</span>
+            </div>
+            
+            <!-- Bottom -->
+            <div class="mt-auto space-y-4 w-full flex flex-col items-center">
+                <form th:action="@{/logout}" method="post" class="w-full flex justify-center">
+                    <button type="submit" class="sidebar-item" title="Đăng xuất" style="width: 48px;">
+                        <div class="icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <span class="label">Đăng xuất</span>
+                    </button>
+                </form>
+                <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <i class="fas fa-user text-gray-600"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-gray-200 px-8 py-6 rounded-2xl shadow-sm mx-4 mt-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Quản lý Bàn</h1>
+                        <p class="text-gray-500 text-sm mt-1">Quản lý và theo dõi tất cả các bàn trong hệ thống</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="/admin/tables/new"
+                           class="px-6 py-2 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors inline-flex items-center">
+                            <i class="fas fa-plus mr-2"></i> Thêm bàn mới
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-8 mr-4">
+                <!-- Error message -->
+                <div th:if="${error}"
+                     class="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-center content-card">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span th:text="${error}"></span>
+                </div>
+
+                <!-- Table List Card -->
+                <div class="content-card">
+                    <div class="mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-2">Danh sách bàn</h2>
+                        <p class="text-sm text-gray-500" th:text="'Tổng số: ' + ${tables != null ? tables.size() : 0} + ' bàn'">Tổng số: 0 bàn</p>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Số bàn</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trạng thái</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Mã QR</th>
+                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Thao tác</th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr th:if="${tables == null or tables.empty}">
+                                    <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+                                        <i class="fas fa-inbox text-4xl mb-3 text-gray-300"></i>
+                                        <p class="text-lg">Chưa có bàn nào</p>
+                                        <a href="/admin/tables/new" class="mt-4 inline-block text-red-500 hover:text-red-600">
+                                            <i class="fas fa-plus mr-2"></i>Tạo bàn đầu tiên
+                                        </a>
+                                    </td>
+                                </tr>
+
+                                <tr th:each="table : ${tables}" class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
+                                                <i class="fas fa-building text-blue-600"></i>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900" th:text="'Bàn ' + ${table.tableNumber}">Bàn 1</span>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span th:if="${table.status == 'available'}"
+                                              class="px-3 py-1 rounded-xl text-sm font-medium inline-flex items-center bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i>Có sẵn
+                                        </span>
+                                        <span th:if="${table.status == 'occupied'}"
+                                              class="px-3 py-1 rounded-xl text-sm font-medium inline-flex items-center bg-red-100 text-red-800">
+                                            <i class="fas fa-times-circle mr-1"></i>Đang sử dụng
+                                        </span>
+                                    </td>
+
+                                    <!-- QR View -->
+                                    <td class="px-6 py-4 whitespace-nowrap" x-data="{ showQR: false }">
+                                        <a th:if="${table.qrCode}"
+                                           href="#"
+                                           @click.prevent="showQR = true"
+                                           class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl inline-flex items-center text-gray-700 text-sm font-medium transition-colors">
+                                            <i class="fas fa-qrcode mr-2"></i>Xem QR
+                                        </a>
+                                        <span th:unless="${table.qrCode}" class="text-gray-400 text-sm">
+                                            <i class="fas fa-ban mr-1"></i>Chưa có QR
+                                        </span>
+
+                                        <!-- Modal -->
+                                        <div x-show="showQR"
+                                             x-cloak
+                                             @click.self="showQR = false"
+                                             class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+                                             style="display: none;">
+                                            <div class="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-lg text-center relative">
+                                                <button @click="showQR = false"
+                                                        class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                                <h2 class="text-xl font-semibold mb-4 text-gray-800">Mã QR Code</h2>
+                                                <p class="text-sm text-gray-500 mb-4" th:text="'Bàn ' + ${table.tableNumber}">Bàn 1</p>
+                                                <img th:src="@{${table.qrCode}}"
+                                                     alt="QR Code"
+                                                     class="mx-auto rounded-xl max-h-[400px] object-contain border border-gray-200">
+                                                <p class="text-xs text-gray-400 mt-4">Quét mã QR để xem menu</p>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center space-x-2">
+                                            <a th:href="@{'/admin/tables/edit/' + ${table.id}}"
+                                               class="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors"
+                                               title="Chỉnh sửa">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a th:href="@{'/admin/tables/toggle-status/' + ${table.id}}"
+                                               class="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-600 rounded-xl transition-colors"
+                                               title="Đổi trạng thái">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
 
-    <!-- Table List -->
-    <div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
-        <table class="min-w-full divide-y divide-white/10">
-            <thead class="bg-white/10">
-                <tr>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Table Number</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">QR Code</th>
-                    <th class="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-
-            <tbody class="divide-y divide-white/10">
-                <tr th:if="${tables.empty}">
-                    <td colspan="4" class="px-6 py-8 text-center text-white/70 text-lg">
-                        <i class="fas fa-info-circle mr-2"></i>No tables available
-                    </td>
-                </tr>
-
-                <tr th:each="table : ${tables}" class="transition-all duration-200 hover:bg-white/10">
-                    <td class="px-6 py-4 text-white/90" th:text="${table.tableNumber}">Table 1</td>
-
-                    <td class="px-6 py-4">
-                        <span th:if="${table.status == 'available'}"
-                              class="glass-button px-3 py-1 rounded-full text-sm font-medium inline-flex items-center text-green-400">
-                            <i class="fas fa-check-circle mr-1"></i>Available
-                        </span>
-                        <span th:if="${table.status == 'occupied'}"
-                              class="glass-button px-3 py-1 rounded-full text-sm font-medium inline-flex items-center text-red-400">
-                            <i class="fas fa-times-circle mr-1"></i>Occupied
-                        </span>
-                    </td>
-
-                    <!-- QR View -->
-                    <td class="px-6 py-4" x-data="{ showQR: false }">
-                        <a th:if="${table.qrCode}"
-                           href="#"
-                           @click.prevent="showQR = true"
-                           class="glass-button px-4 py-2 rounded-lg inline-flex items-center text-white/90 hover:scale-105">
-                            <i class="fas fa-qrcode mr-2"></i>View QR
-                        </a>
-                        <span th:unless="${table.qrCode}" class="text-white/50">
-                            <i class="fas fa-ban mr-1"></i>No QR Code
-                        </span>
-
-                        <!-- Modal -->
-                        <div x-show="showQR"
-                             @click.self="showQR = false"
-                             class="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-                            <div class="bg-white p-6 rounded-2xl shadow-xl w-[90%] max-w-lg text-center relative">
-                                <button @click="showQR = false"
-                                        class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl">&times;</button>
-                                <h2 class="text-xl font-semibold mb-4 text-gray-800">QR Code</h2>
-                                <!-- Nếu DB lưu /qrcodes/table_1.png thì hiển thị trực tiếp -->
-                                <img th:src="@{${table.qrCode}}"
-                                     alt="QR Code"
-                                     class="mx-auto rounded-lg max-h-[400px] object-contain">
-                            </div>
-                        </div>
-                    </td>
-
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-4">
-                            <a th:href="@{'/admin/tables/edit/' + ${table.id}}"
-                               class="glass-button p-3 rounded-xl hover:text-blue-400 hover:scale-105">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a th:href="@{'/admin/tables/toggle-status/' + ${table.id}}"
-                               class="glass-button p-3 rounded-xl hover:text-yellow-400 hover:scale-105">
-                                <i class="fas fa-sync-alt"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const rows = document.querySelectorAll('tbody tr');
-        rows.forEach((row, index) => {
-            row.style.opacity = '0';
-            row.style.transform = 'translateY(20px)';
-            setTimeout(() => {
-                row.style.transition = 'all 0.5s ease';
-                row.style.opacity = '1';
-                row.style.transform = 'translateY(0)';
-            }, 100 * index);
+    <script>
+        // Alpine.js x-cloak style
+        document.addEventListener('DOMContentLoaded', function() {
+            const style = document.createElement('style');
+            style.textContent = '[x-cloak] { display: none !important; }';
+            document.head.appendChild(style);
         });
-    });
-</script>
+    </script>
 </body>
 </html>

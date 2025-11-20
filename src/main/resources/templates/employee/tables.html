@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -53,14 +53,14 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans">
-<!-- Header: Sticky, responsive -->
-<header class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="px-4 py-3 max-w-screen-sm mx-auto"> <!-- Center on mobile -->
+<body style="background: #d7e0fa;" class="min-h-screen font-sans">
+<!-- Header: Rounded, not sticky -->
+<header class="bg-white shadow-sm mx-4 mt-4 rounded-2xl">
+    <div class="px-4 py-3 max-w-screen-sm mx-auto">
         <div class="flex justify-between items-center">
             <div class="flex items-center">
-                <a href="/dashboard" class="mr-3 p-2 rounded-full hover:bg-gray-100">
-                    <i class="fas fa-arrow-left text-indigo-600 text-lg"></i>
+                <a href="/employee/dashboard" class="mr-3 p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-arrow-left text-red-600 text-lg"></i>
                 </a>
                 <div>
                     <h1 class="text-lg font-bold text-gray-800">Quản lý bàn</h1>
@@ -79,12 +79,12 @@
 </header>
 
 <!-- Main Content: Responsive grid và list -->
-<main class="px-4 py-4 max-w-screen-sm mx-auto pb-20"> <!-- Padding bottom cho footer -->
+<main class="px-4 py-4 max-w-screen-sm mx-auto pb-20">
     <!-- Stats Cards: Grid responsive -->
     <div class="grid grid-cols-2 gap-4 mb-6">
-        <div class="bg-white rounded-lg p-4 shadow-sm table-card">
+        <div class="bg-white rounded-2xl p-4 shadow-sm table-card">
             <div class="flex items-center">
-                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
                     <i class="fas fa-table text-blue-600"></i>
                 </div>
                 <div>
@@ -94,9 +94,9 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg p-4 shadow-sm table-card">
+        <div class="bg-white rounded-2xl p-4 shadow-sm table-card">
             <div class="flex items-center">
-                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-3">
                     <i class="fas fa-check-circle text-green-600"></i>
                 </div>
                 <div>
@@ -108,40 +108,46 @@
     </div>
 
     <!-- Tables List: Vertical stack, touch-friendly -->
-    <div class="space-y-3">
-        <div th:each="table : ${tables}" class="table-card bg-white rounded-lg p-4 shadow-sm" th:id="'table-' + ${table.tableNumber}">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3 flex-1">
-                    <div class="w-12 h-12 rounded-lg flex items-center justify-center mr-4"
-                         th:class="${table.status == 'available'} ? 'bg-green-100' : 'bg-red-100'">
-                        <i th:class="${table.status == 'available'} ? 'fas fa-check text-green-600' : 'fas fa-times text-red-600'"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-gray-800" th:text="'Bàn ' + ${table.tableNumber}">Bàn 1</h3>
-                        <p class="text-sm text-gray-500" th:text="${table.status == 'available'} ? 'Có sẵn' : 'Đã sử dụng'">Có sẵn</p>
-                    </div>
+    <div th:each="table : ${tables}" id="table-[[${table.tableNumber}]]" class="bg-white rounded-2xl p-4 mb-4 shadow-sm table-card">
+        <div class="flex justify-between items-center">
+            <div class="flex-1">
+                <div class="flex items-center mb-2">
+                    <h3 class="text-lg font-semibold text-gray-800 mr-3">Bàn [[${table.tableNumber}]]</h3>
+                    <span th:if="${table.status == 'available'}" 
+                          class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                        Trống
+                    </span>
+                    <span th:if="${table.status == 'occupied'}" 
+                          class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                        Đang dùng
+                    </span>
                 </div>
-
-                <div class="flex items-center space-x-3">
-                    <!-- QR Code Button: Modal trigger -->
-                    <button onclick="showQR('[[${table.qrCodePath}]]')"
-                            class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center hover:bg-indigo-200">
-                        <i class="fas fa-qrcode text-indigo-600 text-sm"></i>
+            </div>
+            <div class="flex items-center space-x-2">
+                <!-- QR Code Button -->
+                <button th:if="${table.qrCode != null and !#strings.isEmpty(table.qrCode)}" 
+                        th:data-qr-path="${table.qrCode}"
+                        onclick="showQR(this.getAttribute('data-qr-path'))"
+                        class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center hover:bg-indigo-200 transition-all">
+                    <i class="fas fa-qrcode text-indigo-600 text-sm"></i>
+                </button>
+                <!-- Toggle Status Button -->
+                <form th:action="@{/tables/toggle/{id}(id=${table.id})}" method="post" class="inline">
+                    <button type="submit"
+                            th:class="${table.status == 'available'} ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'"
+                            class="status-toggle w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm transition-all">
+                        <i th:class="${table.status == 'available'} ? 'fas fa-times' : 'fas fa-check'"></i>
                     </button>
-
-                    <!-- Toggle Status Button: Form submit -->
-                    <form th:action="@{/tables/toggle/{id}(id=${table.id})}" method="post" class="inline">
-                        <button type="submit"
-                                th:class="${table.status == 'available'} ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'"
-                                class="status-toggle w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm">
-                            <i th:class="${table.status == 'available'} ? 'fas fa-times' : 'fas fa-check'"></i>
-                        </button>
-                    </form>
-                </div>
+                </form>
+                <!-- View Order Button (only if table is occupied) -->
+                <button th:if="${table.status == 'occupied'}"
+                        th:attr="onclick='showOrderModal(\'' + ${table.tableNumber} + '\')'"
+                        class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-600 text-white text-sm transition-all">
+                    <i class="fas fa-eye"></i>
+                </button>
             </div>
         </div>
     </div>
-
     <!-- Notification Popup: Fixed position, responsive -->
     <div id="notification" class="notification">
         <i class="fas fa-bell mr-2"></i>
@@ -161,32 +167,38 @@
 
 <!-- QR Code Modal: Full screen on mobile -->
 <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg p-6 w-full max-w-sm">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Mã QR bàn</h3>
-            <button onclick="hideQR()" class="text-gray-400 hover:text-gray-600 p-2">
+            <h3 class="text-lg font-semibold text-gray-800">Mã QR bàn</h3>
+            <button onclick="hideQR()" class="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="text-center">
-            <img id="qrImage" src="" alt="QR Code" class="w-48 h-48 mx-auto mb-4 rounded-lg shadow-sm">
+            <img id="qrImage" src="" alt="QR Code" class="w-48 h-48 mx-auto mb-4 rounded-xl shadow-lg border-4 border-gray-100">
             <p class="text-sm text-gray-500">Khách hàng quét mã này để đặt món</p>
         </div>
     </div>
 </div>
+<!-- Order Modal: Cập nhật để hiển thị order, chỉnh sửa, và thanh toán -->
 <div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-96 overflow-y-auto">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md max-h-96 overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Chi tiết Order - Bàn <span id="modalTableNumber"></span></h3>
-            <button onclick="hideOrderModal()" class="text-gray-400 hover:text-gray-600 p-2">
+            <h3 class="text-lg font-semibold text-gray-800">Chi tiết Order - Bàn <span id="modalTableNumber"></span></h3>
+            <button onclick="hideOrderModal()" class="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div id="orderDetails">
             <!-- Nội dung order sẽ được load qua JS -->
+            <div class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                <p class="text-gray-500 mt-2">Đang tải...</p>
+            </div>
         </div>
         <div class="mt-4 flex justify-end space-x-2">
-            <button onclick="saveOrderChanges()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Lưu thay đổi</button>
+            <button onclick="saveOrderChanges()" class="bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 transition-all">Lưu thay đổi</button>
+            <button onclick="payOrder()" class="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600 transition-all">Thanh toán</button>
         </div>
     </div>
 </div>
@@ -207,6 +219,7 @@
 <!-- JavaScript: WebSocket và functions -->
 <script>
     let stompClient = null;
+    let currentOrder = null;
 
     // Kết nối WebSocket khi trang load
     function connect() {
@@ -260,13 +273,124 @@
 
     // Functions cho QR modal
     function showQR(qrPath) {
-        document.getElementById('qrImage').src = qrPath;
+        // Ensure path starts with / if it doesn't
+        const fullPath = qrPath.startsWith('/') ? qrPath : '/' + qrPath;
+        document.getElementById('qrImage').src = fullPath;
+        document.getElementById('qrImage').onerror = function() {
+            console.error('Failed to load QR code:', fullPath);
+            this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5RUiBDb2RlPC90ZXh0Pjwvc3ZnPg==';
+        };
         document.getElementById('qrModal').classList.remove('hidden');
     }
 
     function hideQR() {
         document.getElementById('qrModal').classList.add('hidden');
     }
+
+    // Function hiển thị order modal
+    function showOrderModal(tableNumber) {
+        // Fetch order data from server
+        fetch('/order/table/' + tableNumber)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.order) {
+                    currentOrder = data.order;
+                    displayOrderDetails(data.order);
+                    document.getElementById('modalTableNumber').textContent = tableNumber;
+                    document.getElementById('orderModal').classList.remove('hidden');
+                } else {
+                    alert('Không tìm thấy đơn hàng cho bàn này');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching order:', error);
+                alert('Lỗi khi tải đơn hàng');
+            });
+    }
+
+    // Function hiển thị chi tiết order
+    function displayOrderDetails(order) {
+        const detailsDiv = document.getElementById('orderDetails');
+        let html = `<div class="space-y-2">`;
+        let total = 0;
+        
+        if (order.items && order.items.length > 0) {
+            html += `<ul class="list-none space-y-2">`;
+            order.items.forEach(item => {
+                const itemPrice = parseFloat(item.menuItem.price) || parseFloat(item.price) || 0;
+                const quantity = parseInt(item.quantity) || 0;
+                const itemTotal = itemPrice * quantity;
+                total += itemTotal;
+                html += `
+                    <li class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-800">${item.menuItem.name || 'N/A'}</div>
+                            <div class="text-sm text-gray-500">${itemPrice.toLocaleString('vi-VN')} VND x ${quantity}</div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" 
+                                   value="${quantity}" 
+                                   min="1" 
+                                   onchange="updateItemQuantity(${item.id}, this.value)"
+                                   class="w-16 px-2 py-1 border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="font-bold text-red-600 w-20 text-right">${itemTotal.toLocaleString('vi-VN')} VND</span>
+                        </div>
+                    </li>
+                `;
+            });
+            html += `</ul>`;
+        } else {
+            html += `<p class="text-gray-500 text-center py-4">Chưa có món nào trong đơn hàng</p>`;
+        }
+        html += `<div class="mt-4 pt-4 border-t border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-700">Tổng cộng:</span>
+                        <span class="font-bold text-lg text-red-600">${total.toLocaleString('vi-VN')} VND</span>
+                    </div>
+                 </div>`;
+        html += `</div>`;
+        detailsDiv.innerHTML = html;
+    }
+    // Function cập nhật quantity trong currentOrder
+    function updateItemQuantity(itemId, newQuantity) {
+        const item = currentOrder.items.find(i => i.id === itemId);
+        if (item) {
+            item.quantity = parseInt(newQuantity);
+        }
+    }
+    // Function thanh toán
+    function payOrder() {
+        if (!currentOrder) {
+            alert('Không có đơn hàng để thanh toán');
+            return;
+        }
+        
+        if (!confirm('Bạn có chắc chắn muốn thanh toán đơn hàng này?')) {
+            return;
+        }
+        
+        fetch('/order/pay/' + currentOrder.id, { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Thanh toán thành công! Bàn đã được giải phóng.');
+                    hideOrderModal();
+                    location.reload(); // Reload để cập nhật status bàn
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể thanh toán'));
+                }
+            })
+            .catch(error => {
+                console.error('Error paying:', error);
+                alert('Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.');
+            });
+    }
+
         // Save changes
     function saveOrderChanges() {
         const request = {
