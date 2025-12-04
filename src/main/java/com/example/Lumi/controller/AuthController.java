@@ -111,124 +111,217 @@ public class AuthController {
             }
             
             logger.info("Loading admin dashboard data for user: {}", currentUser.getUsername());
+            
+            // Initialize default values
+            long totalTables = 0;
+            long activeTables = 0;
+            BigDecimal totalRevenue = BigDecimal.ZERO;
+            BigDecimal profit = BigDecimal.ZERO;
+            long productsSold = 0;
+            List<Order> recentOrders = new ArrayList<>();
+            List<User> recentCustomers = new ArrayList<>();
+            BigDecimal[] weeklyRevenue = new BigDecimal[7];
+            // Initialize array với giá trị mặc định
+            for (int i = 0; i < 7; i++) {
+                weeklyRevenue[i] = BigDecimal.ZERO;
+            }
+            java.util.Map<Long, BigDecimal> orderTotals = new java.util.HashMap<>();
+            java.util.Map<Long, String> orderFormattedDates = new java.util.HashMap<>();
+            String formattedCurrentDate = "";
+            String formattedCurrentDateTime = "";
+            
             try {
-                long totalTables = tableService.countAllTables();
-                logger.debug("Total tables count: {}", totalTables);
-                model.addAttribute("totalTables", totalTables);
-                
-                long activeTables = tableService.countActiveTables();
-                logger.debug("Active tables count: {}", activeTables);
-                model.addAttribute("activeTables", activeTables);
-                
-                // Calculate revenue (from paid orders this month)
-                LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
-                List<Order> allOrders = orderRepository.findAll();
-                List<Order> paidOrdersThisMonth = allOrders.stream()
-                    .filter(o -> o != null && o.getStatus() == Order.Status.paid && o.getCreatedAt() != null)
-                    .filter(o -> o.getCreatedAt().toLocalDate().isAfter(startOfMonth.minusDays(1)))
-                    .collect(Collectors.toList());
-                
-                BigDecimal totalRevenue = BigDecimal.ZERO;
-                if (!paidOrdersThisMonth.isEmpty()) {
-                    totalRevenue = paidOrdersThisMonth.stream()
-                        .filter(o -> o.getItems() != null)
-                        .map(order -> {
-                            try {
-                                return orderService.calculateTotal(order);
-                            } catch (Exception e) {
-                                logger.warn("Error calculating total for order {}: {}", order.getId(), e.getMessage());
-                                return BigDecimal.ZERO;
-                            }
-                        })
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                // Load tables count
+                try {
+                    totalTables = tableService.countAllTables();
+                    logger.debug("Total tables count: {}", totalTables);
+                } catch (Exception e) {
+                    logger.error("Error counting total tables", e);
                 }
                 
-                // Calculate profit (70% of revenue as example)
-                BigDecimal profit = totalRevenue.multiply(BigDecimal.valueOf(0.7));
+                try {
+                    activeTables = tableService.countActiveTables();
+                    logger.debug("Active tables count: {}", activeTables);
+                } catch (Exception e) {
+                    logger.error("Error counting active tables", e);
+                }
                 
-                // Count products sold (sum of all order items quantities)
-                long productsSold = paidOrdersThisMonth.stream()
-                    .filter(o -> o.getItems() != null)
-                    .flatMap(o -> o.getItems().stream())
-                    .filter(item -> item != null)
-                    .mapToLong(item -> item.getQuantity())
-                    .sum();
-                
-                // Get recent orders (last 5) with totals calculated
-                List<Order> recentOrders = allOrders.stream()
-                    .filter(o -> o != null && o.getCreatedAt() != null)
-                    .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                    .limit(5)
-                    .collect(Collectors.toList());
-                
-                // Calculate totals for each order and store in a map
-                java.util.Map<Long, BigDecimal> orderTotals = new java.util.HashMap<>();
-                java.util.Map<Long, String> orderFormattedDates = new java.util.HashMap<>();
-                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, H:mm", new Locale("vi", "VN"));
-                
-                for (Order order : recentOrders) {
+                // Calculate revenue (from paid orders this month) - OPTIMIZE: Chỉ load orders một lần
+                try {
+                    LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+                    
+                    // OPTIMIZE: Load tất cả orders một lần duy nhất (tránh multiple queries)
+                    // Giới hạn số lượng orders để tránh timeout
+                    List<Order> allOrders = new ArrayList<>();
                     try {
-                        if (order.getItems() != null && !order.getItems().isEmpty()) {
-                            BigDecimal total = orderService.calculateTotal(order);
-                            orderTotals.put(order.getId(), total);
-                        } else {
-                            orderTotals.put(order.getId(), BigDecimal.ZERO);
+                        allOrders = orderRepository.findAll();
+                        logger.debug("Loaded {} total orders from database", allOrders.size());
+                        
+                        // Nếu có quá nhiều orders, chỉ lấy 1000 orders mới nhất để tránh lag
+                        if (allOrders.size() > 1000) {
+                            logger.warn("Too many orders ({}), limiting to 1000 most recent", allOrders.size());
+                            allOrders = allOrders.stream()
+                                .filter(o -> o != null && o.getCreatedAt() != null)
+                                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                                .limit(1000)
+                                .collect(Collectors.toList());
                         }
                     } catch (Exception e) {
-                        logger.warn("Error calculating total for order {}: {}", order.getId(), e.getMessage());
-                        orderTotals.put(order.getId(), BigDecimal.ZERO);
+                        logger.error("Error loading orders", e);
+                        // Nếu lỗi, set empty list để tránh crash
+                        allOrders = new ArrayList<>();
                     }
                     
-                    // Format order date
-                    if (order.getCreatedAt() != null) {
+                    // Filter paid orders this month từ allOrders
+                    List<Order> paidOrdersThisMonth = allOrders.stream()
+                        .filter(o -> o != null && o.getStatus() == Order.Status.paid && o.getCreatedAt() != null)
+                        .filter(o -> o.getCreatedAt().toLocalDate().isAfter(startOfMonth.minusDays(1)))
+                        .collect(Collectors.toList());
+                    
+                    logger.debug("Found {} paid orders this month", paidOrdersThisMonth.size());
+                    
+                    if (!paidOrdersThisMonth.isEmpty()) {
+                        totalRevenue = paidOrdersThisMonth.stream()
+                            .filter(o -> o.getItems() != null)
+                            .map(order -> {
+                                try {
+                                    return orderService.calculateTotal(order);
+                                } catch (Exception e) {
+                                    logger.warn("Error calculating total for order {}: {}", order.getId(), e.getMessage());
+                                    return BigDecimal.ZERO;
+                                }
+                            })
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    }
+                    
+                    // Calculate profit (70% of revenue as example)
+                    profit = totalRevenue.multiply(BigDecimal.valueOf(0.7));
+                    
+                    // Count products sold (sum of all order items quantities)
+                    productsSold = paidOrdersThisMonth.stream()
+                        .filter(o -> o.getItems() != null)
+                        .flatMap(o -> o.getItems().stream())
+                        .filter(item -> item != null)
+                        .mapToLong(item -> item.getQuantity())
+                        .sum();
+                    
+                    // Get recent orders (last 5) - đã có allOrders từ trên
+                    recentOrders = allOrders.stream()
+                        .filter(o -> o != null && o.getCreatedAt() != null)
+                        .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                        .limit(5)
+                        .collect(Collectors.toList());
+                    
+                    logger.debug("Selected {} recent orders for display", recentOrders.size());
+                    
+                    // Calculate totals for each order and store in a map
+                    DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, H:mm", new Locale("vi", "VN"));
+                    
+                    for (Order order : recentOrders) {
                         try {
-                            String formattedDate = order.getCreatedAt().format(dateTimeFormatter);
-                            orderFormattedDates.put(order.getId(), formattedDate);
+                            // Kiểm tra null và lazy loading
+                            if (order != null && order.getId() != null) {
+                                try {
+                                    // Force load items nếu cần (tránh lazy loading exception)
+                                    if (order.getItems() != null) {
+                                        // Touch items để force load
+                                        int itemCount = order.getItems().size();
+                                        if (itemCount > 0) {
+                                            BigDecimal total = orderService.calculateTotal(order);
+                                            orderTotals.put(order.getId(), total);
+                                        } else {
+                                            orderTotals.put(order.getId(), BigDecimal.ZERO);
+                                        }
+                                    } else {
+                                        orderTotals.put(order.getId(), BigDecimal.ZERO);
+                                    }
+                                } catch (Exception e) {
+                                    logger.warn("Error calculating total for order {}: {}", order.getId(), e.getMessage());
+                                    orderTotals.put(order.getId(), BigDecimal.ZERO);
+                                }
+                                
+                                // Format order date
+                                if (order.getCreatedAt() != null) {
+                                    try {
+                                        String formattedDate = order.getCreatedAt().format(dateTimeFormatter);
+                                        orderFormattedDates.put(order.getId(), formattedDate);
+                                    } catch (Exception e) {
+                                        logger.warn("Error formatting date for order {}: {}", order.getId(), e.getMessage());
+                                        orderFormattedDates.put(order.getId(), "");
+                                    }
+                                } else {
+                                    orderFormattedDates.put(order.getId(), "");
+                                }
+                            }
                         } catch (Exception e) {
-                            orderFormattedDates.put(order.getId(), "");
+                            logger.error("Error processing order: {}", e.getMessage(), e);
+                            // Set defaults để tránh crash
+                            if (order != null && order.getId() != null) {
+                                orderTotals.put(order.getId(), BigDecimal.ZERO);
+                                orderFormattedDates.put(order.getId(), "");
+                            }
                         }
                     }
-                }
-                model.addAttribute("orderTotals", orderTotals);
-                model.addAttribute("orderFormattedDates", orderFormattedDates);
-                
-                // Get recent customers (from orders)
-                List<User> recentCustomers = recentOrders.stream()
-                    .filter(o -> o.getTable() != null)
-                    .map(o -> o.getTable())
-                    .distinct()
-                    .limit(5)
-                    .map(t -> {
-                        // Create a simple user representation from table
-                        User u = new User();
-                        u.setFullName("Bàn " + t.getTableNumber());
-                        return u;
-                    })
-                    .collect(Collectors.toList());
-                
-                // Weekly revenue data for chart (last 7 days)
-                BigDecimal[] weeklyRevenue = new BigDecimal[7];
-                for (int i = 0; i < 7; i++) {
-                    LocalDate date = LocalDate.now().minusDays(6 - i);
-                    BigDecimal dayRevenue = allOrders.stream()
-                        .filter(o -> o != null && o.getStatus() == Order.Status.paid && o.getCreatedAt() != null)
-                        .filter(o -> o.getCreatedAt().toLocalDate().equals(date))
-                        .filter(o -> o.getItems() != null)
-                        .map(order -> {
-                            try {
-                                return orderService.calculateTotal(order);
-                            } catch (Exception e) {
-                                return BigDecimal.ZERO;
-                            }
+                    
+                    // Get recent customers (from orders)
+                    recentCustomers = recentOrders.stream()
+                        .filter(o -> o.getTable() != null)
+                        .map(o -> o.getTable())
+                        .distinct()
+                        .limit(5)
+                        .map(t -> {
+                            // Create a simple user representation from table
+                            User u = new User();
+                            u.setFullName("Bàn " + t.getTableNumber());
+                            return u;
                         })
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    weeklyRevenue[i] = dayRevenue != null ? dayRevenue : BigDecimal.ZERO;
+                        .collect(Collectors.toList());
+                    
+                    // Weekly revenue data for chart (last 7 days)
+                    for (int i = 0; i < 7; i++) {
+                        try {
+                            LocalDate date = LocalDate.now().minusDays(6 - i);
+                            BigDecimal dayRevenue = allOrders.stream()
+                                .filter(o -> o != null && o.getStatus() == Order.Status.paid && o.getCreatedAt() != null)
+                                .filter(o -> {
+                                    try {
+                                        return o.getCreatedAt().toLocalDate().equals(date);
+                                    } catch (Exception e) {
+                                        logger.warn("Error comparing date for order: {}", e.getMessage());
+                                        return false;
+                                    }
+                                })
+                                .filter(o -> {
+                                    try {
+                                        return o.getItems() != null && !o.getItems().isEmpty();
+                                    } catch (Exception e) {
+                                        logger.warn("Error accessing items for order: {}", e.getMessage());
+                                        return false;
+                                    }
+                                })
+                                .map(order -> {
+                                    try {
+                                        return orderService.calculateTotal(order);
+                                    } catch (Exception e) {
+                                        logger.warn("Error calculating total for weekly revenue: {}", e.getMessage());
+                                        return BigDecimal.ZERO;
+                                    }
+                                })
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                            weeklyRevenue[i] = dayRevenue != null ? dayRevenue : BigDecimal.ZERO;
+                        } catch (Exception e) {
+                            logger.error("Error calculating weekly revenue for day {}: {}", i, e.getMessage());
+                            weeklyRevenue[i] = BigDecimal.ZERO;
+                        }
+                    }
+                    
+                    // Format dates for template
+                    DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEE, d MMM", new Locale("vi", "VN"));
+                    formattedCurrentDate = LocalDate.now().format(dateFormatter);
+                    formattedCurrentDateTime = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("vi", "VN"))) + ", " + LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm"));
+                } catch (Exception e) {
+                    logger.error("Error calculating revenue and statistics", e);
                 }
-                
-                // Format dates for template
-                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEE, d MMM", new Locale("vi", "VN"));
-                String formattedCurrentDate = LocalDate.now().format(dateFormatter);
-                String formattedCurrentDateTime = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("vi", "VN"))) + ", " + LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm"));
                 
                 // Log all data before adding to model
                 logger.info("=== Dashboard Data Summary ===");
@@ -271,6 +364,8 @@ public class AuthController {
                 model.addAttribute("recentOrders", recentOrders);
                 model.addAttribute("recentCustomers", recentCustomers);
                 model.addAttribute("weeklyRevenue", weeklyRevenue);
+                model.addAttribute("orderTotals", orderTotals);
+                model.addAttribute("orderFormattedDates", orderFormattedDates);
                 model.addAttribute("formattedCurrentDate", formattedCurrentDate);
                 model.addAttribute("formattedCurrentDateTime", formattedCurrentDateTime);
                 
@@ -290,8 +385,8 @@ public class AuthController {
                 model.addAttribute("revenue", BigDecimal.ZERO);
                 model.addAttribute("profit", BigDecimal.ZERO);
                 model.addAttribute("productsSold", 0);
-                model.addAttribute("recentOrders", List.of());
-                model.addAttribute("recentCustomers", List.of());
+                model.addAttribute("recentOrders", Collections.emptyList());
+                model.addAttribute("recentCustomers", Collections.emptyList());
                 model.addAttribute("weeklyRevenue", new BigDecimal[7]);
                 model.addAttribute("orderTotals", new java.util.HashMap<>());
                 model.addAttribute("orderFormattedDates", new java.util.HashMap<>());
@@ -299,11 +394,16 @@ public class AuthController {
                 model.addAttribute("formattedCurrentDateTime", "");
             }
             
+            // Ensure all required attributes are in model
             model.addAttribute("user", currentUser);
+            model.addAttribute("totalTables", totalTables);
+            model.addAttribute("activeTables", activeTables);
             
             // Final check: Log all model attributes
             logger.info("=== Final Model Attributes Check ===");
             logger.info("User: {}", currentUser != null ? currentUser.getUsername() : "NULL");
+            logger.info("Total Tables: {}", totalTables);
+            logger.info("Active Tables: {}", activeTables);
             logger.info("Model contains 'revenue': {}", model.containsAttribute("revenue"));
             logger.info("Model contains 'profit': {}", model.containsAttribute("profit"));
             logger.info("Model contains 'productsSold': {}", model.containsAttribute("productsSold"));
@@ -315,7 +415,8 @@ public class AuthController {
             logger.info("Model contains 'formattedCurrentDate': {}", model.containsAttribute("formattedCurrentDate"));
             logger.info("Model contains 'formattedCurrentDateTime': {}", model.containsAttribute("formattedCurrentDateTime"));
             
-            logger.info("Rendering admin dashboard template");
+            logger.info("=== ALL ATTRIBUTES SET - RETURNING TEMPLATE ===");
+            logger.info("Template name: admin/dashboard");
             return "admin/dashboard";
         } catch (Exception e) {
             logger.error("=== CRITICAL ERROR loading admin dashboard ===", e);
@@ -342,7 +443,11 @@ public class AuthController {
             model.addAttribute("productsSold", 0);
             model.addAttribute("recentOrders", Collections.emptyList());
             model.addAttribute("recentCustomers", Collections.emptyList());
-            model.addAttribute("weeklyRevenue", new BigDecimal[7]);
+            BigDecimal[] defaultWeeklyRevenue = new BigDecimal[7];
+            for (int i = 0; i < 7; i++) {
+                defaultWeeklyRevenue[i] = BigDecimal.ZERO;
+            }
+            model.addAttribute("weeklyRevenue", defaultWeeklyRevenue);
             model.addAttribute("orderTotals", new java.util.HashMap<>());
             model.addAttribute("orderFormattedDates", new java.util.HashMap<>());
             model.addAttribute("formattedCurrentDate", "");

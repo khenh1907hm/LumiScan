@@ -394,15 +394,23 @@
                             <span class="text-sm text-gray-500 cursor-pointer hover:text-gray-700">Tất cả</span>
                         </div>
                         <div class="space-y-3">
-                            <div th:each="order : ${recentOrders}" class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <div th:each="order : ${recentOrders}" 
+                                 th:if="${order != null and order.id != null}"
+                                 th:onclick="'showOrderModal(' + ${order.id} + ')'"
+                                 class="cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                                 <div class="flex items-center space-x-3 flex-1">
                                     <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
                                         <i class="fas fa-bolt text-yellow-600"></i>
                                     </div>
                                     <div class="flex-1">
-                                        <p class="font-medium text-gray-800">Đơn hàng ID: <span th:text="'DH-' + ${#strings.pad(order.id, 3, '0')}">DH-001</span></p>
-                                        <p class="text-xs text-gray-500" th:text="${order.table != null ? order.table.tableNumber : 'N/A'}">Bàn 1</p>
-                                        <p class="text-xs text-gray-500 mt-1" th:if="${orderFormattedDates != null and orderFormattedDates.containsKey(order.id)}">
+                                        <p class="font-medium text-gray-800">
+                                            <!-- Định dạng ID thành DH-001, DH-002... -->
+                                            <span th:text="${'DH-' + #numbers.formatInteger(order.id, 3)}">DH-001</span>
+                                        </p>
+                                        <p class="text-xs text-gray-500" 
+                                           th:text="${order.table != null and order.table.tableNumber != null ? order.table.tableNumber : 'N/A'}">Bàn 1</p>
+                                        <p class="text-xs text-gray-500 mt-1" 
+                                           th:if="${orderFormattedDates != null and orderFormattedDates.containsKey(order.id)}">
                                             <span th:text="${orderFormattedDates.get(order.id)}">12 thg9 2025, 9:29</span>
                                         </p>
                                     </div>
@@ -421,9 +429,16 @@
                                         </span>
                                         <span th:if="${orderTotals == null or !orderTotals.containsKey(order.id)}">0 VND</span>
                                     </p>
-                                    <span class="text-xs px-2 py-1 rounded" 
-                                          th:class="${order.status != null and order.status.name() == 'paid'} ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'"
-                                          th:text="${order.status != null and order.status.name() == 'paid'} ? 'Đã thanh toán' : (order.status != null ? order.status.name() : 'Chưa xác định')">Đã thanh toán</span>
+                                    <span class="text-xs px-2 py-1 rounded"
+                                          th:class="${order.status != null and order.status.name() == 'paid'} ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                                        <!-- Đã thanh toán -->
+                                        <span th:if="${order.status != null and order.status.name() == 'paid'}">Đã thanh toán</span>
+                                        <!-- Chưa xác định -->
+                                        <span th:if="${order.status == null}">Chưa xác định</span>
+                                        <!-- Các trạng thái khác -->
+                                        <span th:if="${order.status != null and order.status.name() != 'paid'}"
+                                              th:text="${order.status.name()}">pending</span>
+                                    </span>
                                 </div>
                             </div>
                             <div th:if="${recentOrders == null or #lists.isEmpty(recentOrders)}" class="text-center py-8 text-gray-500">
@@ -648,6 +663,279 @@
         }
         
         console.log("=== DASHBOARD INITIALIZATION COMPLETE ===");
+    </script>
+
+    <!-- Order Management Modal -->
+    <div id="orderModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Chi tiết Order - <span id="modalOrderId"></span></h3>
+                <button onclick="hideOrderModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="orderDetails" class="mb-4">
+                <!-- Order details will be loaded here -->
+            </div>
+            <div class="flex justify-between items-center pt-4 border-t">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Trạng thái:</label>
+                    <select id="orderStatusSelect" class="border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="pending">Pending</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="served">Served</option>
+                        <option value="paid">Paid</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="saveOrderChanges()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        <i class="fas fa-save mr-2"></i>Lưu thay đổi
+                    </button>
+                    <button onclick="hideOrderModal()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentOrder = null;
+        let hasUnsavedChanges = false;
+
+        // Function hiển thị order modal
+        function showOrderModal(orderId) {
+            try {
+                console.log('showOrderModal called with orderId:', orderId);
+                hasUnsavedChanges = false;
+                
+                if (!orderId) {
+                    alert('Order ID không hợp lệ');
+                    return;
+                }
+                
+                fetch('/order/by-id/' + orderId)
+                    .then(response => {
+                        console.log('Response status:', response.status);
+                        if (!response.ok) {
+                            throw new Error('HTTP error! status: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Order data received:', data);
+                        if (data.success && data.order) {
+                            currentOrder = data.order;
+                            displayOrderDetails(data.order);
+                            
+                            const modalOrderIdEl = document.getElementById('modalOrderId');
+                            const orderStatusSelectEl = document.getElementById('orderStatusSelect');
+                            const orderModalEl = document.getElementById('orderModal');
+                            
+                            if (modalOrderIdEl) {
+                                modalOrderIdEl.textContent = 'DH-' + String(data.order.id).padStart(3, '0');
+                            }
+                            if (orderStatusSelectEl) {
+                                orderStatusSelectEl.value = data.order.status;
+                            }
+                            if (orderModalEl) {
+                                orderModalEl.classList.remove('hidden');
+                            } else {
+                                console.error('Order modal element not found!');
+                            }
+                        } else {
+                            alert('Không tìm thấy đơn hàng: ' + (data.message || ''));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching order:', error);
+                        alert('Lỗi khi tải đơn hàng: ' + error.message);
+                    });
+            } catch (error) {
+                console.error('Error in showOrderModal:', error);
+                alert('Lỗi: ' + error.message);
+            }
+        }
+
+        // Function hiển thị chi tiết order
+        function displayOrderDetails(order) {
+            const detailsDiv = document.getElementById('orderDetails');
+            let html = `<div class="space-y-2 mb-4">
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="text-sm text-gray-600">Bàn: <span class="font-medium">${order.tableNumber || 'N/A'}</span></p>
+                    <p class="text-sm text-gray-600">Ngày tạo: <span class="font-medium">${new Date(order.createdAt).toLocaleString('vi-VN')}</span></p>
+                </div>
+            </div>
+            <div class="space-y-2">`;
+            let total = 0;
+            
+            if (order.items && order.items.length > 0) {
+                html += `<ul class="list-none space-y-2">`;
+                order.items.forEach(item => {
+                    const itemPrice = parseFloat(item.price) || parseFloat(item.menuItem?.price) || 0;
+                    const quantity = parseInt(item.quantity) || 0;
+                    const itemTotal = itemPrice * quantity;
+                    total += itemTotal;
+                    html += `
+                        <li class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-800">${item.menuItem?.name || 'N/A'}</div>
+                                <div class="text-sm text-gray-500">${itemPrice.toLocaleString('vi-VN')} VND x ${quantity}</div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" 
+                                       value="${quantity}" 
+                                       min="1" 
+                                       onchange="updateItemQuantity(${item.id}, this.value)"
+                                       class="w-16 px-2 py-1 border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button onclick="deleteOrderItem(${item.id})" 
+                                        class="px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                                        title="Xóa món này">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <span class="font-bold text-red-600 w-20 text-right">${itemTotal.toLocaleString('vi-VN')} VND</span>
+                            </div>
+                        </li>
+                    `;
+                });
+                html += `</ul>`;
+            } else {
+                html += `<p class="text-gray-500 text-center py-4">Chưa có món nào trong đơn hàng</p>`;
+            }
+            html += `<div class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-gray-700">Tổng cộng:</span>
+                            <span class="font-bold text-lg text-red-600">${total.toLocaleString('vi-VN')} VND</span>
+                        </div>
+                     </div>`;
+            html += `</div>`;
+            detailsDiv.innerHTML = html;
+        }
+
+        // Function cập nhật quantity
+        function updateItemQuantity(itemId, newQuantity) {
+            const item = currentOrder.items.find(i => i.id === itemId);
+            if (item) {
+                const oldQuantity = item.quantity;
+                const newQty = parseInt(newQuantity) || 1;
+                item.quantity = newQty;
+                if (oldQuantity !== newQty) {
+                    hasUnsavedChanges = true;
+                    displayOrderDetails(currentOrder);
+                }
+            }
+        }
+
+        // Function xóa item
+        async function deleteOrderItem(itemId) {
+            if (!confirm('Bạn có chắc muốn xóa món này?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/order/item/' + itemId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    currentOrder.items = currentOrder.items.filter(i => i.id !== itemId);
+                    displayOrderDetails(currentOrder);
+                    hasUnsavedChanges = false;
+                    alert('Xóa món thành công');
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể xóa món'));
+                }
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                alert('Có lỗi xảy ra khi xóa món. Vui lòng thử lại.');
+            }
+        }
+
+        // Function lưu thay đổi
+        async function saveOrderChanges() {
+            // Update status
+            const newStatus = document.getElementById('orderStatusSelect').value;
+            if (currentOrder.status !== newStatus) {
+                try {
+                    const statusResponse = await fetch('/order/update-status/' + currentOrder.id + '?status=' + newStatus, {
+                        method: 'POST'
+                    });
+                    if (!statusResponse.ok) {
+                        alert('Lỗi khi cập nhật trạng thái');
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error updating status:', error);
+                    alert('Lỗi khi cập nhật trạng thái');
+                    return;
+                }
+            }
+
+            // Update items
+            const validItems = currentOrder.items.filter(item => item.quantity > 0);
+            const request = {
+                orderId: currentOrder.id,
+                items: validItems.map(item => ({ menuItemId: item.menuItem.id, quantity: item.quantity }))
+            };
+            
+            try {
+                const response = await fetch('/order/update-items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(request)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('Cập nhật thành công');
+                    hasUnsavedChanges = false;
+                    hideOrderModal();
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + (data.message || 'Không thể cập nhật'));
+                }
+            } catch (error) {
+                console.error('Error saving:', error);
+                alert('Có lỗi xảy ra khi lưu. Vui lòng thử lại.');
+            }
+        }
+
+        function hideOrderModal() {
+            try {
+                if (hasUnsavedChanges) {
+                    if (confirm('Bạn có thay đổi chưa lưu. Bạn có muốn lưu trước khi đóng không?')) {
+                        saveOrderChanges();
+                        return;
+                    }
+                }
+                const orderModalEl = document.getElementById('orderModal');
+                if (orderModalEl) {
+                    orderModalEl.classList.add('hidden');
+                }
+                currentOrder = null;
+                hasUnsavedChanges = false;
+            } catch (error) {
+                console.error('Error in hideOrderModal:', error);
+            }
+        }
+        
+        // Error handler to catch any unhandled errors
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+            console.error('Error message:', e.message);
+            console.error('Error file:', e.filename);
+            console.error('Error line:', e.lineno);
+        });
+        
+        // Log khi trang load xong
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Admin dashboard loaded successfully');
+        });
     </script>
 </body>
 </html>

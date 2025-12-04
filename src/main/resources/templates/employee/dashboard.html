@@ -6,6 +6,10 @@
     <title>Employee Dashboard - LumiScan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- SockJS và STOMP.js cho WebSocket -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <audio id="notificationSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" preload="auto"></audio>
     <style>
         body {
             background: #d7e0fa;
@@ -98,6 +102,35 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            display: none;
+            z-index: 1000;
+            max-width: 80vw;
+            word-wrap: break-word;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .notification.urgent {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+            animation: shake 0.5s, pulse 2s infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
     </style>
 </head>
 <body>
@@ -163,9 +196,10 @@
                         <p class="text-gray-500 text-sm mt-1">Quản lý bàn và đơn hàng</p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-50">
-                            <i class="fas fa-bell text-gray-600"></i>
-                        </div>
+                        <button onclick="toggleNotificationLog()" class="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 cursor-pointer hover:bg-gray-50 relative">
+                            <i class="fas fa-history text-gray-600"></i>
+                            <span id="notificationLogBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -290,11 +324,360 @@
         </div>
     </div>
 
+    <!-- Notification Popup -->
+    <div id="notification" class="notification">
+        <div class="flex items-center justify-between w-full">
+            <div class="flex items-center flex-1">
+                <i class="fas fa-bell mr-2"></i>
+                <span id="notification-text"></span>
+            </div>
+            <div id="notification-actions" class="ml-4 flex items-center"></div>
+        </div>
+    </div>
+    
+    <!-- Notification Log (hiển thị lịch sử thông báo) -->
+    <div id="notificationLog" class="fixed bottom-4 right-4 w-80 max-h-96 bg-white rounded-2xl shadow-2xl z-50 hidden overflow-hidden flex flex-col">
+        <div class="bg-indigo-600 text-white px-4 py-3 flex justify-between items-center">
+            <h3 class="font-semibold"><i class="fas fa-history mr-2"></i>Lịch sử thông báo</h3>
+            <button onclick="toggleNotificationLog()" class="text-white hover:text-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="notificationLogContent" class="overflow-y-auto p-2 space-y-2">
+            <!-- Notification log items will be added here -->
+        </div>
+        <div class="border-t p-2 text-center text-xs text-gray-500">
+            Tự động xóa sau 15 phút
+        </div>
+    </div>
+
     <script>
+        let stompClient = null;
+
+        // Kết nối WebSocket khi trang load
+        function connect() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                console.log('Connected to WebSocket: ' + frame);
+                
+                // Subscribe để nhận thông báo order mới
+                stompClient.subscribe('/topic/orders', function (message) {
+                    console.log('=== Received order message ===');
+                    console.log('Message body:', message.body);
+                    const notificationText = message.body;
+                    
+                    // Extract tableNumber từ message
+                    let tableNumber = null;
+                    let tableMatch = notificationText.match(/table\s+(\w+)/i);
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/bàn\s+(\w+)/i);
+                    }
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/tại\s+bàn\s+(\w+)/i);
+                    }
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/from\s+table\s+(\w+)/i);
+                    }
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/Gọi\s+nhân\s+viên\s+-\s+Bàn\s+(\w+)/i);
+                    }
+                    if (tableMatch) {
+                        tableNumber = tableMatch[1].trim();
+                        console.log('Extracted table number:', tableNumber);
+                    } else {
+                        const numberMatch = notificationText.match(/\b(\d+)\b/);
+                        if (numberMatch) {
+                            tableNumber = numberMatch[1];
+                        }
+                    }
+                    
+                    let type = 'urgent';
+                    console.log('Showing notification with type:', type);
+                    showNotification(notificationText, tableNumber, type);
+                });
+                
+                // Subscribe để nhận thông báo gọi nhân viên
+                stompClient.subscribe('/topic/staff-calls', function (message) {
+                    console.log('=== Received staff call ===');
+                    console.log('Message body:', message.body);
+                    const notificationText = message.body;
+                    
+                    // Extract tableNumber từ message
+                    let tableNumber = null;
+                    let tableMatch = notificationText.match(/bàn\s+(\w+)/i);
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/tại\s+bàn\s+(\w+)/i);
+                    }
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/table\s+(\w+)/i);
+                    }
+                    if (!tableMatch) {
+                        tableMatch = notificationText.match(/from\s+table\s+(\w+)/i);
+                    }
+                    if (tableMatch) {
+                        tableNumber = tableMatch[1].trim();
+                        console.log('Extracted table number:', tableNumber);
+                    } else {
+                        const numberMatch = notificationText.match(/\b(\d+)\b/);
+                        if (numberMatch) {
+                            tableNumber = numberMatch[1];
+                        }
+                    }
+                    
+                    console.log('Showing urgent notification for staff call');
+                    showNotification(notificationText, tableNumber, 'urgent');
+                });
+            }, function (error) {
+                console.error('WebSocket error: ', error);
+                setTimeout(connect, 5000);
+            });
+        }
+
+        // Notification log storage (tự động xóa sau 15 phút)
+        let notificationLog = [];
+        
+        // Hiển thị notification với action buttons, popup rung và phát tiếng
+        function showNotification(text, tableNumber = null, type = 'info') {
+            console.log('showNotification called:', text, tableNumber, type);
+            
+            // Thêm vào log với timestamp
+            const logEntry = {
+                text: text,
+                tableNumber: tableNumber,
+                type: type,
+                timestamp: new Date(),
+                id: Date.now() + Math.random() // Unique ID
+            };
+            notificationLog.push(logEntry);
+            
+            // Xóa các log cũ hơn 15 phút
+            const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+            notificationLog = notificationLog.filter(log => log.timestamp > fifteenMinutesAgo);
+            
+            // Cập nhật log display
+            updateNotificationLog();
+            
+            const notif = document.getElementById('notification');
+            const notifText = document.getElementById('notification-text');
+            const notifActions = document.getElementById('notification-actions');
+            
+            if (!notif || !notifText || !notifActions) {
+                console.error('Notification elements not found!');
+                return;
+            }
+            
+            notifText.textContent = text;
+            
+            // Tạo action buttons nếu có tableNumber
+            if (tableNumber) {
+                notifActions.innerHTML = `
+                    <button onclick="handleNotification('view', '${tableNumber}')" 
+                            class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm mr-2">
+                        <i class="fas fa-eye mr-1"></i>Xem
+                    </button>
+                    <button onclick="handleNotification('dismiss', null)" 
+                            class="px-3 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm">
+                        <i class="fas fa-times mr-1"></i>Đóng
+                    </button>
+                `;
+            } else {
+                notifActions.innerHTML = `
+                    <button onclick="handleNotification('dismiss', null)" 
+                            class="px-3 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm">
+                        <i class="fas fa-times mr-1"></i>Đóng
+                    </button>
+                `;
+            }
+            
+            // Thêm class theo type
+            notif.className = 'notification';
+            if (type === 'urgent') {
+                notif.classList.add('urgent');
+            }
+            
+            // Hiển thị notification với animation rung
+            notif.style.display = 'block';
+            notif.style.animation = 'shake 0.5s';
+            
+            // Phát âm thanh thông báo - lặp lại 3 lần nếu urgent
+            if (type === 'urgent') {
+                playNotificationSoundRepeated(3);
+            } else {
+                playNotificationSoundRepeated(1);
+            }
+            
+            // Rung màn hình (nếu được phép)
+            if (type === 'urgent' && 'vibrate' in navigator) {
+                navigator.vibrate([200, 100, 200, 100, 200]);
+            }
+            
+            // Auto-hide sau 15 giây
+            setTimeout(() => {
+                if (notif && notif.style.display === 'block') {
+                    notif.style.display = 'none';
+                }
+            }, 15000);
+        }
+        
+        // Phát âm thanh lặp lại nhiều lần
+        function playNotificationSoundRepeated(times) {
+            const sound = document.getElementById('notificationSound');
+            
+            if (sound) {
+                // Reset audio để có thể phát lại
+                sound.currentTime = 0;
+                sound.volume = 0.7;
+                
+                // Phát lần đầu
+                sound.play().catch(e => {
+                    console.log('Could not play sound:', e);
+                    // Fallback: dùng Web Audio API
+                    playNotificationSoundWebAudio(times);
+                });
+                
+                // Phát các lần tiếp theo với delay
+                for (let i = 1; i < times; i++) {
+                    setTimeout(() => {
+                        sound.currentTime = 0; // Reset về đầu
+                        sound.play().catch(e => {
+                            console.log('Could not play sound again:', e);
+                            // Fallback cho lần này
+                            if (i === times - 1) {
+                                playNotificationSoundWebAudio(1);
+                            }
+                        });
+                    }, i * 800); // Delay 800ms giữa mỗi lần phát
+                }
+            } else {
+                // Fallback nếu không có audio element
+                playNotificationSoundWebAudio(times);
+            }
+        }
+        
+        // Fallback: Tạo âm thanh bằng Web Audio API
+        function playNotificationSoundWebAudio(times = 1) {
+            try {
+                for (let i = 0; i < times; i++) {
+                    setTimeout(() => {
+                        try {
+                            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            const oscillator = audioContext.createOscillator();
+                            const gainNode = audioContext.createGain();
+                            
+                            oscillator.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+                            
+                            oscillator.frequency.value = 800;
+                            oscillator.type = 'sine';
+                            
+                            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                            
+                            oscillator.start(audioContext.currentTime);
+                            oscillator.stop(audioContext.currentTime + 0.5);
+                        } catch (e) {
+                            console.log('Could not create audio context:', e);
+                        }
+                    }, i * 800);
+                }
+            } catch (e) {
+                console.log('Could not create audio context:', e);
+            }
+        }
+        
+        // Xử lý action từ notification
+        function handleNotification(action, tableNumber) {
+            const notif = document.getElementById('notification');
+            notif.style.display = 'none';
+            
+            if (action === 'view' && tableNumber) {
+                // Chuyển đến trang quản lý bàn
+                window.location.href = '/employee/tables?table=' + tableNumber;
+            }
+        }
+        
         // Function to show order modal (if needed)
         function showOrderModal(tableNumber) {
             window.location.href = '/employee/tables?table=' + tableNumber;
         }
+        
+        // Cập nhật notification log display
+        function updateNotificationLog() {
+            const logContent = document.getElementById('notificationLogContent');
+            const badge = document.getElementById('notificationLogBadge');
+            
+            if (!logContent) return;
+            
+            // Sort theo thời gian (mới nhất trước)
+            const sortedLogs = [...notificationLog].sort((a, b) => b.timestamp - a.timestamp);
+            
+            // Cập nhật badge
+            if (badge) {
+                if (sortedLogs.length > 0) {
+                    badge.textContent = sortedLogs.length > 99 ? '99+' : sortedLogs.length;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+            
+            if (sortedLogs.length === 0) {
+                logContent.innerHTML = '<p class="text-center text-gray-500 py-4 text-sm">Chưa có thông báo nào</p>';
+                return;
+            }
+            
+            let html = '';
+            sortedLogs.forEach(log => {
+                const timeStr = new Date(log.timestamp).toLocaleTimeString('vi-VN', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                const bgColor = log.type === 'urgent' ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200';
+                html += `
+                    <div class="border rounded-lg p-3 ${bgColor} text-sm">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-medium text-gray-800">${log.text}</span>
+                            <span class="text-xs text-gray-500 ml-2 whitespace-nowrap">${timeStr}</span>
+                        </div>
+                        ${log.tableNumber ? `<div class="text-xs text-gray-600 mt-1"><i class="fas fa-table mr-1"></i>Bàn ${log.tableNumber}</div>` : ''}
+                    </div>
+                `;
+            });
+            logContent.innerHTML = html;
+        }
+        
+        // Toggle notification log
+        function toggleNotificationLog() {
+            const logDiv = document.getElementById('notificationLog');
+            if (logDiv) {
+                logDiv.classList.toggle('hidden');
+                if (!logDiv.classList.contains('hidden')) {
+                    updateNotificationLog();
+                }
+            }
+        }
+        
+        // Auto-update log mỗi phút để xóa các entry cũ
+        setInterval(() => {
+            const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+            const beforeSize = notificationLog.length;
+            notificationLog = notificationLog.filter(log => log.timestamp > fifteenMinutesAgo);
+            if (notificationLog.length !== beforeSize) {
+                updateNotificationLog();
+            }
+        }, 60000); // Check mỗi phút
+        
+        // Khởi tạo kết nối WebSocket khi trang load
+        connect();
+        
+        // Ngắt kết nối khi unload
+        window.addEventListener('beforeunload', function() {
+            if (stompClient) {
+                stompClient.disconnect();
+            }
+        });
     </script>
 </body>
 </html>

@@ -30,6 +30,104 @@
         #qr-reader{
             border-radius: 12px;
         }
+
+        /* Liquid Glass Effect */
+        .liquid-glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .liquid-glass:hover {
+            background: rgba(255, 255, 255, 0.95);
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+        }
+
+        .liquid-glass-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .liquid-glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .liquid-glass-card:hover::before {
+            left: 100%;
+        }
+
+        .liquid-glass-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 50px 0 rgba(99, 102, 241, 0.25);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .glass-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .liquid-glass-card:hover .glass-icon {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+            transform: scale(1.1) rotate(5deg);
+        }
+
+
+        /* Glass button effect */
+        .glass-button {
+            background: rgba(99, 102, 241, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .glass-button:hover {
+            background: rgba(99, 102, 241, 1);
+            transform: scale(1.05);
+        }
+
+        /* QR Scanner Modal */
+        #qrModalReader {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        #qrModalReader video {
+            border-radius: 12px;
+        }
+        
+        #qrModalReader canvas {
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
@@ -49,54 +147,59 @@
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 py-6 md:py-12">
+    <main class="max-w-6xl mx-auto px-4 py-6 md:py-12">
         <!-- Hero Section -->
         <div class="text-center mb-8 md:mb-12">
-            <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20  mb-4 md:mb-6">
-<!--                <i class="fas fa-qrcode text-white text-2xl md:text-3xl"></i>-->
+            <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 mb-4 md:mb-6">
                 <img src="/static/images/hero.png" alt="">
             </div>
             <h2 class="text-2xl md:text-4xl font-bold text-gray-800 mb-3 md:mb-4">Chào mừng đến với LumiScan</h2>
             <p class="text-base md:text-xl text-gray-600 mb-6 md:mb-8 px-4">Quét mã QR trên bàn để xem menu và đặt món</p>
         </div>
 
-        <!-- QR Scanner Section -->
-        <div class="bg-white rounded-xl md:rounded-2xl shadow-xl p-4 md:p-8 mb-6 md:mb-8" >
-            <h3 class="text-lg md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center" style="display: flex;justify-content: center;align-items: center;gap: 10px;">
-                <animated-icons
-                        src="https://animatedicons.co/get-icon?name=camera&style=minimalistic&token=0c308f1b-6b38-4d26-b725-90e26782d169"
-                        trigger="click"
-                        attributes='{"variationThumbColour":"#536DFE","variationName":"Two Tone","variationNumber":2,"numberOfGroups":2,"backgroundIsGroup":false,"strokeWidth":1,"defaultColours":{"group-1":"#000000","group-2":"#536DFE","background":"#FFFFFF"}}'
-                        height="50"
-                        width="50"
-                ></animated-icons>
-                Quét mã QR
-            </h3>
-
-
-            <div class="text-center" >
-
-                <div id="qr-reader" class="mx-auto mb-4 md:mb-6" style="width: 100%; max-width: 300px;">
-
+        <!-- Quick Actions - Liquid Glass Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
+            <!-- Order -->
+            <a href="javascript:void(0)" onclick="showOrder()" class="liquid-glass-card p-6 text-center cursor-pointer group">
+                <div class="glass-icon mx-auto">
+                    <i class="fas fa-shopping-cart text-indigo-600 text-2xl"></i>
                 </div>
-                <p class="text-gray-600 mb-3 md:mb-4 text-sm md:text-base">Hoặc nhập mã bàn thủ công:</p>
+                <h3 class="text-gray-800 font-semibold text-sm md:text-base mb-2">Order</h3>
+                <p class="text-gray-600 text-xs md:text-sm">Quét mã QR để đặt món</p>
+            </a>
 
-                <div class="max-w-md mx-auto">
-                    <div class="flex">
-                        <input type="text" id="tableNumber" placeholder="Nhập số bàn (VD: 1, 2, 3...)"
-                               class="flex-1 border border-gray-300 rounded-l-lg p-2 md:p-3 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        <button onclick="goToTable()"
-                                class="bg-indigo-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-r-lg hover:bg-indigo-700 transition-colors">
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
+            <!-- Gọi nhân viên -->
+            <a href="javascript:void(0)" onclick="callStaff()" class="liquid-glass-card p-6 text-center cursor-pointer group">
+                <div class="glass-icon mx-auto">
+                    <i class="fas fa-bell text-indigo-600 text-2xl"></i>
                 </div>
-            </div>
+                <h3 class="text-gray-800 font-semibold text-sm md:text-base mb-2">Gọi nhân viên</h3>
+                <p class="text-gray-600 text-xs md:text-sm">Yêu cầu hỗ trợ</p>
+            </a>
+
+            <!-- Thanh toán -->
+            <a href="javascript:void(0)" onclick="showPayment()" class="liquid-glass-card p-6 text-center cursor-pointer group">
+                <div class="glass-icon mx-auto">
+                    <i class="fas fa-credit-card text-indigo-600 text-2xl"></i>
+                </div>
+                <h3 class="text-gray-800 font-semibold text-sm md:text-base mb-2">Thanh toán</h3>
+                <p class="text-gray-600 text-xs md:text-sm">Thanh toán đơn hàng</p>
+            </a>
+
+            <!-- Đánh giá -->
+            <a href="javascript:void(0)" onclick="showReview()" class="liquid-glass-card p-6 text-center cursor-pointer group">
+                <div class="glass-icon mx-auto">
+                    <i class="fas fa-star text-indigo-600 text-2xl"></i>
+                </div>
+                <h3 class="text-gray-800 font-semibold text-sm md:text-base mb-2">Đánh giá</h3>
+                <p class="text-gray-600 text-xs md:text-sm">Đánh giá dịch vụ</p>
+            </a>
         </div>
 
+
         <!-- Instructions -->
-        <div class="bg-white rounded-2xl shadow-xl p-8">
-            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center" style="display: flex;gap: 7px;align-items: center;justify-content: center;">
+        <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <h3 class="text-xl md:text-2xl font-bold text-gray-800 mb-6 text-center flex items-center justify-center gap-2">
                 <img width="27px" src="/static/images/section_main.png" alt="">
                 Hướng dẫn sử dụng
             </h3>
@@ -104,7 +207,6 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="text-center">
                     <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
-<!--                        <i class="fas fa-qrcode text-blue-600 text-xl"></i>-->
                         <img src="/static/images/section_1.png" alt="">
                     </div>
                     <h4 class="font-semibold text-gray-800 mb-2">1. Quét mã QR</h4>
@@ -113,9 +215,7 @@
                 
                 <div class="text-center">
                     <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4">
-<!--                        <i class="fas fa-utensils text-green-600 text-xl"></i>-->
                         <img src="/static/images/section_2.png" alt="">
-
                     </div>
                     <h4 class="font-semibold text-gray-800 mb-2">2. Xem menu</h4>
                     <p class="text-gray-600 text-sm">Chọn món ăn từ menu hiển thị</p>
@@ -135,35 +235,106 @@
     <!-- Footer -->
     <footer class="bg-gray-800 text-white py-8 mt-12">
         <div class="max-w-7xl mx-auto px-4 text-center">
-            <p>&copy;LumiScan </p>
+            <p>&copy; LumiScan</p>
         </div>
     </footer>
+
+    <!-- Modal for actions -->
+    <div id="actionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-lg mx-4 text-center max-h-[90vh] overflow-y-auto">
+            <div id="modalContent" class="text-gray-800">
+                <!-- Content will be inserted here -->
+            </div>
+            <button onclick="closeModal()" class="mt-6 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                Đóng
+            </button>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal - Liquid Glass -->
+    <div id="qrModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <!-- Làm nền kính nhưng chữ đậm, dễ đọc hơn -->
+        <div class="liquid-glass p-6 md:p-8 max-w-md mx-4 relative text-gray-800">
+            <!-- Close button -->
+            <button onclick="closeQRModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors z-10">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+            
+            <!-- Header -->
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                    <div class="glass-icon">
+                        <i class="fas fa-qrcode text-indigo-600"></i>
+                    </div>
+                    Quét mã QR
+                </h3>
+            </div>
+            
+            <!-- QR Scanner Area -->
+            <div class="mb-6">
+                <div id="qrModalReader" class="mb-4 rounded-xl overflow-hidden bg-white/10 backdrop-blur-md p-2"></div>
+            </div>
+            
+            <!-- Divider -->
+            <div class="flex items-center mb-4">
+                <div class="flex-1 border-t border-gray-200"></div>
+                <span class="px-4 text-gray-500 text-sm font-medium">Hoặc</span>
+                <div class="flex-1 border-t border-gray-200"></div>
+            </div>
+            
+            <!-- Manual Input -->
+            <div class="mb-4">
+                <p class="text-gray-700 text-sm mb-3 text-center font-medium">Nhập mã bàn thủ công:</p>
+                <div class="flex gap-2">
+                    <input type="text" id="modalTableNumber" placeholder="Nhập số bàn (VD: 1, 2, 3...)"
+                           class="flex-1 bg-white/90 border border-gray-300 rounded-lg p-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base shadow-sm">
+                    <button onclick="goToTableFromModal()"
+                            class="glass-button px-4 md:px-6 py-3 rounded-lg transition-all shadow-md">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- QR Scanner Script -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
-        // QR Code Scanner
-        const html5QrcodeScanner = new Html5QrcodeScanner(
-            "qr-reader", 
-            { 
-                fps: 10, 
-                qrbox: { width: 250, height: 250 } 
-            },
-            false
-        );
-
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        let qrScanner = null;
 
 
         function onScanSuccess(decodedText, decodedResult) {
             console.log(`QR Code detected: ${decodedText}`);
             
+            // Stop scanner
+            if (qrScanner) {
+                qrScanner.clear();
+                qrScanner = null;
+            }
+            
+            // Close modal
+            closeQRModal();
+            
             // Extract table number from URL
-            const url = new URL(decodedText);
-            const tableNumber = url.pathname.split('/').pop();
+            let tableNumber = null;
+            try {
+                const url = new URL(decodedText);
+                tableNumber = url.pathname.split('/').pop();
+            } catch (e) {
+                // If not a URL, try to extract number directly
+                const match = decodedText.match(/(\d+)/);
+                if (match) {
+                    tableNumber = match[1];
+                }
+            }
             
             if (tableNumber) {
+                // Lưu tableNumber vào localStorage
+                localStorage.setItem('currentTableNumber', tableNumber);
+                console.log('Saved table number to localStorage:', tableNumber);
                 window.location.href = `/order/${tableNumber}`;
+            } else {
+                alert('Không thể đọc mã QR. Vui lòng thử lại hoặc nhập số bàn thủ công.');
             }
         }
 
@@ -172,22 +343,299 @@
             console.log(`QR Code scan failed: ${error}`);
         }
 
-        // Manual table number input
-        function goToTable() {
-            const tableNumber = document.getElementById('tableNumber').value.trim();
+        // Allow Enter key to submit in modal
+        document.addEventListener('DOMContentLoaded', function() {
+            // This will be set when modal opens
+        });
+
+        // Action functions
+        function callStaff() {
+            // Lấy tableNumber từ localStorage
+            const savedTableNumber = localStorage.getItem('currentTableNumber');
+            
+            const modal = document.getElementById('actionModal');
+            const content = document.getElementById('modalContent');
+            
+            let tableNumberInput = '';
+            if (savedTableNumber) {
+                tableNumberInput = `<p class="text-gray-600 mb-2">Bàn hiện tại: <strong class="text-indigo-600">${savedTableNumber}</strong></p>`;
+            }
+            
+            content.innerHTML = `
+                <div class="mb-4">
+                    <i class="fas fa-bell text-4xl text-yellow-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2 text-gray-800">Gọi nhân viên</h3>
+                    ${tableNumberInput}
+                    <p class="text-gray-600 mb-4">${savedTableNumber ? 'Nhấn nút bên dưới để gọi nhân viên đến bàn này' : 'Vui lòng nhập số bàn để gọi nhân viên'}</p>
+                </div>
+                <div class="mt-4">
+                    ${!savedTableNumber ? `
+                    <input type="text" id="staffTableNumber" placeholder="Nhập số bàn" 
+                           class="w-full border border-gray-300 rounded-lg p-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+                    ` : ''}
+                    <button onclick="submitCallStaff()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg w-full hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-bell mr-2"></i>Gọi nhân viên
+                    </button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function submitCallStaff() {
+            // Lấy tableNumber từ localStorage hoặc input
+            let tableNumber = localStorage.getItem('currentTableNumber');
+            
+            if (!tableNumber) {
+                tableNumber = document.getElementById('staffTableNumber')?.value.trim();
+            }
+            
+            if (!tableNumber) {
+                alert('Vui lòng nhập số bàn');
+                return;
+            }
+            
+            // Gửi request đến backend
+            fetch('/order/call-staff', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tableNumber: tableNumber
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Đã gửi yêu cầu gọi nhân viên cho bàn ' + tableNumber + '. Nhân viên sẽ đến ngay!');
+                    closeModal();
+                } else {
+                    alert('Có lỗi xảy ra: ' + (data.message || 'Vui lòng thử lại'));
+                }
+            })
+            .catch(error => {
+                console.error('Error calling staff:', error);
+                alert('Có lỗi xảy ra khi gọi nhân viên. Vui lòng thử lại.');
+            });
+        }
+
+
+        function showOrder() {
+            // Show QR Scanner Modal
+            const qrModal = document.getElementById('qrModal');
+            qrModal.classList.remove('hidden');
+            qrModal.classList.add('flex');
+            
+            // Initialize QR Scanner
+            if (qrScanner) {
+                qrScanner.clear();
+            }
+            
+            qrScanner = new Html5QrcodeScanner(
+                "qrModalReader", 
+                { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 } 
+                },
+                false
+            );
+
+            qrScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        function closeQRModal() {
+            const qrModal = document.getElementById('qrModal');
+            qrModal.classList.add('hidden');
+            qrModal.classList.remove('flex');
+            
+            // Stop scanner
+            if (qrScanner) {
+                qrScanner.clear();
+                qrScanner = null;
+            }
+        }
+
+        function goToTableFromModal() {
+            const tableNumber = document.getElementById('modalTableNumber').value.trim();
             if (tableNumber) {
+                // Lưu tableNumber vào localStorage
+                localStorage.setItem('currentTableNumber', tableNumber);
+                console.log('Saved table number to localStorage:', tableNumber);
                 window.location.href = `/order/${tableNumber}`;
             } else {
                 alert('Vui lòng nhập số bàn');
             }
         }
 
-        // Allow Enter key to submit
-        document.getElementById('tableNumber').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                goToTable();
+
+        function closeModal() {
+            const modal = document.getElementById('actionModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('actionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
             }
         });
+
+        // Close QR modal when clicking outside
+        document.getElementById('qrModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRModal();
+            }
+        });
+
+        // Allow Enter key in modal table number input
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const modalTableNumber = document.getElementById('modalTableNumber');
+                if (modalTableNumber && modalTableNumber === document.activeElement) {
+                    goToTableFromModal();
+                }
+            }
+        });
+
+        function showPayment() {
+            // Lấy tableNumber từ localStorage
+            const savedTableNumber = localStorage.getItem('currentTableNumber');
+            
+            const modal = document.getElementById('actionModal');
+            const content = document.getElementById('modalContent');
+            
+            let tableNumberInput = '';
+            if (savedTableNumber) {
+                tableNumberInput = `<p class="text-gray-600 mb-2">Bàn hiện tại: <strong class="text-indigo-600">${savedTableNumber}</strong></p>`;
+            }
+            
+            content.innerHTML = `
+                <div class="mb-4">
+                    <i class="fas fa-credit-card text-4xl text-green-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2 text-gray-800">Thanh toán</h3>
+                    ${tableNumberInput}
+                    <p class="text-gray-600 mb-4">${savedTableNumber ? 'Nhấn nút bên dưới để thanh toán cho bàn này' : 'Vui lòng nhập số bàn để thanh toán'}</p>
+                </div>
+                <div class="mt-4">
+                    ${!savedTableNumber ? `
+                    <input type="text" id="paymentTableNumber" placeholder="Nhập số bàn" 
+                           class="w-full border border-gray-300 rounded-lg p-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4">
+                    ` : ''}
+                    <button onclick="goToPayment()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg w-full hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-credit-card mr-2"></i>Thanh toán
+                    </button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function goToPayment() {
+            // Lấy tableNumber từ localStorage hoặc input
+            let tableNumber = localStorage.getItem('currentTableNumber');
+            
+            if (!tableNumber) {
+                tableNumber = document.getElementById('paymentTableNumber')?.value.trim();
+            }
+            
+            if (!tableNumber) {
+                alert('Vui lòng nhập số bàn');
+                return;
+            }
+            
+            // Redirect to order page where they can pay
+            window.location.href = `/order/${tableNumber}`;
+        }
+
+        function showReview() {
+            const modal = document.getElementById('actionModal');
+            const content = document.getElementById('modalContent');
+            content.innerHTML = `
+                <div class="mb-4">
+                    <i class="fas fa-star text-4xl text-yellow-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2 text-gray-800">Đánh giá dịch vụ</h3>
+                    <p class="text-gray-600 mb-4">Chúng tôi rất mong nhận được phản hồi từ bạn!</p>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Đánh giá (1-5 sao)</label>
+                        <div class="flex justify-center gap-2 mb-4" id="ratingStars">
+                            ${[1,2,3,4,5].map(i => `<i class="fas fa-star text-3xl text-gray-300 cursor-pointer hover:scale-125 transition-transform rating-star" data-rating="${i}" onclick="setRating(${i})" onmouseover="hoverRating(${i})" onmouseout="resetRating()"></i>`).join('')}
+                        </div>
+                        <input type="hidden" id="ratingValue" value="0">
+                    </div>
+                    <textarea id="reviewText" placeholder="Nhập đánh giá của bạn..." 
+                              class="w-full border border-gray-300 rounded-lg p-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 h-24"></textarea>
+                    <button onclick="submitReview()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg w-full hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-paper-plane mr-2"></i>Gửi đánh giá
+                    </button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        let selectedRating = 0;
+        
+        function setRating(rating) {
+            // Cập nhật giá trị rating
+            selectedRating = rating;
+            document.getElementById('ratingValue').value = rating;
+            console.log('Rating set to:', rating); // Debug
+            
+            const stars = document.querySelectorAll('#actionModal .rating-star');
+            stars.forEach((star, index) => {
+                const starRating = parseInt(star.getAttribute('data-rating'));
+                // index là 0-based, rating là 1-based, nên dùng starRating <= rating
+                if (starRating <= rating) {
+                    star.classList.add('text-yellow-400');
+                    star.classList.remove('text-gray-300');
+                } else {
+                    star.classList.remove('text-yellow-400');
+                    star.classList.add('text-gray-300');
+                }
+            });
+        }
+        
+        function hoverRating(rating) {
+            const stars = document.querySelectorAll('#actionModal .rating-star');
+            stars.forEach((star) => {
+                const starRating = parseInt(star.getAttribute('data-rating'));
+                if (starRating <= rating) {
+                    star.classList.add('text-yellow-300');
+                    star.classList.remove('text-gray-300');
+                } else {
+                    star.classList.remove('text-yellow-300');
+                    star.classList.add('text-gray-300');
+                }
+            });
+        }
+        
+        function resetRating() {
+            // Reset về rating đã chọn
+            if (selectedRating > 0) {
+                setRating(selectedRating);
+            } else {
+                const stars = document.querySelectorAll('#actionModal .rating-star');
+                stars.forEach((star) => {
+                    star.classList.remove('text-yellow-300', 'text-yellow-400');
+                    star.classList.add('text-gray-300');
+                });
+            }
+        }
+
+        function submitReview() {
+            const rating = document.getElementById('ratingValue').value;
+            const reviewText = document.getElementById('reviewText').value.trim();
+            
+            if (rating == 0) {
+                alert('Vui lòng chọn số sao đánh giá');
+                return;
+            }
+            
+            alert(`Cảm ơn bạn đã đánh giá ${rating} sao! Đánh giá của bạn: "${reviewText || 'Không có nhận xét'}"`);
+            closeModal();
+        }
     </script>
     <!-- Script để load AnimatedIcons -->
     <script src="https://animatedicons.co/scripts/embed-animated-icons.js"></script>

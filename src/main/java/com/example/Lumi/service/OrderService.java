@@ -126,4 +126,126 @@ public class OrderService {
 
         return order;
     }
+
+    // Lấy order hiện tại của bàn (chưa thanh toán và còn món)
+    public Optional<Order> getCurrentOrderByTable(String tableNumber) {
+        Optional<TableEntity> tableOpt = tableService.findByTableNumber(tableNumber);
+        if (tableOpt.isEmpty()) {
+            System.out.println("Table not found: " + tableNumber);
+            return Optional.empty();
+        }
+        TableEntity table = tableOpt.get();
+        System.out.println("Finding current order for table ID=" + table.getId() + ", tableNumber=" + table.getTableNumber());
+        
+        // Tìm order mới nhất của bàn này, còn ở trạng thái khách đang đặt (pending)
+        Optional<Order> orderOpt = orderRepository.findTopByTableIdOrderByIdDesc(table.getId());
+        if (orderOpt.isPresent()) {
+            Order order = orderOpt.get();
+            
+            // QUAN TRỌNG: Kiểm tra lại tableNumber để đảm bảo đúng bàn (tránh lỗi mapping)
+            if (order.getTable() == null || !order.getTable().getTableNumber().equals(tableNumber)) {
+                System.out.println("ERROR: Order " + order.getId() + " belongs to different table!");
+                return Optional.empty();
+            }
+            
+            // Chỉ coi là "current" cho khách nếu đơn còn ở trạng thái pending
+            // và thực sự còn món (kiểm tra trực tiếp DB để tránh cache cũ)
+            boolean isPending = order.getStatus() == Order.Status.pending;
+            boolean hasItems = !orderItemRepository.findByOrder(order).isEmpty();
+            
+            System.out.println("Order " + order.getId() + ": isPending=" + isPending + ", hasItems=" + hasItems);
+            
+            if (isPending && hasItems) {
+                return Optional.of(order);
+            }
+        } else {
+            System.out.println("No order found for table ID=" + table.getId());
+        }
+        return Optional.empty();
+    }
+
+    // Thêm món vào order hiện có (cho khách hàng)
+    @Transactional
+    public Order addItemsToOrder(Long orderId, List<OrderItemRequest> orderItemRequests) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new IllegalArgumentException("Order không tồn tại");
+        }
+        Order order = orderOpt.get();
+        
+        // Kiểm tra order chưa thanh toán
+        if (order.getStatus() == Order.Status.paid || order.getStatus() == Order.Status.done) {
+            throw new IllegalArgumentException("Không thể thêm món vào đơn hàng đã thanh toán");
+        }
+        
+        // Thêm các món mới vào order
+        for (OrderItemRequest req : orderItemRequests) {
+            MenuItem menuItem = menuItemService.getMenuItemByIdOrThrow(req.getMenuItemId());
+            
+            // Kiểm tra xem món này đã có trong order chưa
+            boolean itemExists = false;
+            if (order.getItems() != null) {
+                for (OrderItem existingItem : order.getItems()) {
+                    if (existingItem.getMenuItem().getId().equals(menuItem.getId())) {
+                        // Nếu đã có, tăng số lượng
+                        existingItem.setQuantity(existingItem.getQuantity() + req.getQuantity());
+                        orderItemRepository.save(existingItem);
+                        itemExists = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Nếu chưa có, tạo mới
+            if (!itemExists) {
+                OrderItem item = OrderItem.builder()
+                        .order(order)
+                        .menuItem(menuItem)
+                        .quantity(req.getQuantity())
+                        .price(menuItem.getPrice())
+                        .build();
+                orderItemRepository.save(item);
+            }
+        }
+        
+        // Cập nhật thời gian
+        order.setUpdatedAt(LocalDateTime.now());
+        return orderRepository.save(order);
+    }
+
+    // Xóa tất cả items trong order (cho khách hàng xóa giỏ hàng)
+    @Transactional
+    public Order clearOrderItems(Long orderId) {
+        return clearOrderItems(orderId, false);
+    }
+    
+    // Xóa tất cả items trong order (overload với allowNonPending cho employee/admin)
+    @Transactional
+    public Order clearOrderItems(Long orderId, boolean allowNonPending) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new IllegalArgumentException("Order không tồn tại");
+        }
+        Order order = orderOpt.get();
+        
+        // Kiểm tra order phải ở trạng thái pending (trừ khi allowNonPending = true)
+        if (!allowNonPending && order.getStatus() != Order.Status.pending) {
+            throw new IllegalArgumentException("Không thể xóa món trong đơn hàng đã được xử lý");
+        }
+        
+        // Employee/Admin không được xóa order đã thanh toán
+        if (allowNonPending && (order.getStatus() == Order.Status.paid || order.getStatus() == Order.Status.done)) {
+            throw new IllegalArgumentException("Không thể xóa món trong đơn hàng đã thanh toán");
+        }
+        
+        // Xóa tất cả items
+        orderItemRepository.deleteByOrder(order);
+        if (order.getItems() != null) {
+            order.getItems().clear();
+        }
+        
+        // Cập nhật thời gian
+        order.setUpdatedAt(LocalDateTime.now());
+        return orderRepository.save(order);
+    }
 }

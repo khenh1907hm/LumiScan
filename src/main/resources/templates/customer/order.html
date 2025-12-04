@@ -10,13 +10,14 @@
         body {
             background: #d7e0fa;
             padding-bottom: 200px; /* Space for sticky cart on mobile */
+            color: #111827;
         }
         .menu-card {
             background: white;
             border-radius: 16px;
             padding: 16px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
         .menu-card:hover {
             transform: translateY(-2px);
@@ -242,9 +243,16 @@
             <!-- Desktop Cart Section -->
             <div class="hidden lg:block lg:col-span-1">
                 <div class="bg-white rounded-2xl p-6 sticky top-24" id="desktopCart">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">
-                        <i class="fas fa-shopping-cart mr-2"></i>Giỏ hàng
-                    </h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-shopping-cart mr-2"></i>Giỏ hàng
+                        </h2>
+                        <button id="clearCartBtnDesktop"
+                                onclick="clearCart()"
+                                class="text-sm text-red-500 hover:text-red-700 hidden">
+                            Xóa hết
+                        </button>
+                    </div>
                     
                     <div id="cartItems" class="mb-4 max-h-96 overflow-y-auto">
                         <p class="text-gray-500 text-center py-8">Giỏ hàng trống</p>
@@ -286,16 +294,23 @@
                     <div class="text-left">
                         <p class="text-xs text-gray-500">Giỏ hàng</p>
                         <p id="mobileTotalPrice" class="text-lg font-bold text-red-600">0 VND</p>
-    </div>
+                    </div>
                     <i class="fas fa-chevron-up text-gray-400 ml-auto" id="cartToggleIcon"></i>
                 </button>
-                <button onclick="submitOrder()" 
-                        id="mobileSubmitBtn"
-                        disabled
-                        class="ml-4 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap">
-                    <i class="fas fa-paper-plane mr-2"></i>Đặt món
-            </button>
-        </div>
+                <div class="flex items-center gap-2">
+                    <button id="clearCartBtnMobile"
+                            onclick="clearCart()"
+                            class="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 hidden">
+                        Xóa hết
+                    </button>
+                    <button onclick="submitOrder()" 
+                            id="mobileSubmitBtn"
+                            disabled
+                            class="px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap">
+                        <i class="fas fa-paper-plane mr-2"></i>Đặt món
+                    </button>
+                </div>
+            </div>
     </div>
 </div>
 
@@ -313,10 +328,19 @@
     </div>
 </div>
 
-    <script>
+    <script th:inline="javascript">
         let cart = {}; // {itemId: {name, price, quantity}}
+        let initialCart = {}; // snapshot giỏ hàng ban đầu
+        let isInitialCartSet = false;
         const tableNumber = /*[[${tableNumber}]]*/ '1';
         let mobileCartExpanded = false;
+        let currentOrderId = /*[[${orderId}]]*/ null;
+        let currentOrderStatus = /*[[${orderStatus}]]*/ null;
+        
+        // Kiểm tra xem có thể xóa món không (chỉ cho phép khi order status là pending)
+        function canDeleteItems() {
+            return currentOrderStatus === null || currentOrderStatus === 'pending';
+        }
 
         function addToCartWithAnimation(buttonElement) {
             const itemId = buttonElement.getAttribute('data-item-id');
@@ -399,13 +423,22 @@
         }
 
         function removeFromCart(itemId) {
+            // Kiểm tra quyền xóa
+            if (!canDeleteItems()) {
+                alert('Không thể xóa món vì nhà hàng đã bắt đầu chuẩn bị. Vui lòng liên hệ nhân viên nếu cần hủy món.');
+                return;
+            }
+            
+            // Xóa trực tiếp thay vì giảm quantity
             if (cart[itemId]) {
-                cart[itemId].quantity--;
-                if (cart[itemId].quantity <= 0) {
-                    delete cart[itemId];
+                delete cart[itemId];
+                updateCartDisplay();
+                
+                // Auto-sync với server nếu có order hiện tại
+                if (currentOrderId && canDeleteItems()) {
+                    syncCartToServer();
                 }
             }
-            updateCartDisplay();
         }
 
         function toggleMobileCart() {
@@ -437,6 +470,7 @@
             let html = '';
             for (const [itemId, item] of Object.entries(cart)) {
                 const itemTotal = item.price * item.quantity;
+                const canDelete = canDeleteItems();
                 
                 html += `
                     <div class="cart-item">
@@ -445,15 +479,27 @@
                                 <h4 class="font-medium text-gray-800">${item.name}</h4>
                                 <p class="text-sm text-gray-500">${item.price.toLocaleString('vi-VN')} VND</p>
                             </div>
+                            ${canDelete ? `
                             <button onclick="removeFromCart(${itemId})" class="text-red-500 hover:text-red-700">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            ` : `
+                            <span class="text-gray-400 cursor-not-allowed" title="Không thể xóa vì nhà hàng đã chuẩn bị">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            `}
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
+                                ${canDelete ? `
                                 <button onclick="updateQuantity(${itemId}, -1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200">
                                     <i class="fas fa-minus text-xs"></i>
                                 </button>
+                                ` : `
+                                <button disabled class="w-8 h-8 bg-gray-100 rounded-lg opacity-50 cursor-not-allowed" title="Không thể giảm vì nhà hàng đã chuẩn bị">
+                                    <i class="fas fa-minus text-xs"></i>
+                                </button>
+                                `}
                                 <span class="w-12 text-center font-medium">${item.quantity}</span>
                                 <button onclick="updateQuantity(${itemId}, 1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200">
                                     <i class="fas fa-plus text-xs"></i>
@@ -468,6 +514,27 @@
             mobileCartItemsDiv.innerHTML = html;
         }
 
+        // So sánh 2 giỏ hàng
+        function cartsEqual(a, b) {
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
+            if (keysA.length !== keysB.length) return false;
+            for (const key of keysA) {
+                if (!b[key]) return false;
+                if (a[key].quantity !== b[key].quantity) return false;
+            }
+            return true;
+        }
+
+        // Kiểm tra giỏ hiện tại có thay đổi so với ban đầu không
+        function hasCartChanged() {
+            if (!isInitialCartSet) {
+                // Chưa có order cũ (khách đặt lần đầu) => có thay đổi khi giỏ không rỗng
+                return Object.keys(cart).length > 0;
+            }
+            return !cartsEqual(cart, initialCart);
+        }
+
         function updateCartDisplay() {
             const cartItemsDiv = document.getElementById('cartItems');
             const totalPriceSpan = document.getElementById('totalPrice');
@@ -475,6 +542,8 @@
             const submitBtn = document.getElementById('submitBtn');
             const mobileSubmitBtn = document.getElementById('mobileSubmitBtn');
             const cartBadge = document.getElementById('cartBadge');
+            const clearCartBtnDesktop = document.getElementById('clearCartBtnDesktop');
+            const clearCartBtnMobile = document.getElementById('clearCartBtnMobile');
             
             // Calculate total items
             const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
@@ -489,6 +558,8 @@
                 submitBtn.disabled = true;
                 mobileSubmitBtn.disabled = true;
                 cartBadge.classList.add('hidden');
+                if (clearCartBtnDesktop) clearCartBtnDesktop.classList.add('hidden');
+                if (clearCartBtnMobile) clearCartBtnMobile.classList.add('hidden');
                 return;
             }
 
@@ -504,6 +575,7 @@
             for (const [itemId, item] of Object.entries(cart)) {
                 const itemTotal = item.price * item.quantity;
                 total += itemTotal;
+                const canDelete = canDeleteItems();
                 
             html += `
                     <div class="cart-item">
@@ -512,15 +584,27 @@
                                 <h4 class="font-medium text-gray-800">${item.name}</h4>
                                 <p class="text-sm text-gray-500">${item.price.toLocaleString('vi-VN')} VND</p>
                             </div>
+                            ${canDelete ? `
                             <button onclick="removeFromCart(${itemId})" class="text-red-500 hover:text-red-700">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            ` : `
+                            <span class="text-gray-400 cursor-not-allowed" title="Không thể xóa vì nhà hàng đã chuẩn bị">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            `}
                         </div>
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
+                                ${canDelete ? `
                                 <button onclick="updateQuantity(${itemId}, -1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200">
                                     <i class="fas fa-minus text-xs"></i>
                                 </button>
+                                ` : `
+                                <button disabled class="w-8 h-8 bg-gray-100 rounded-lg opacity-50 cursor-not-allowed" title="Không thể giảm vì nhà hàng đã chuẩn bị">
+                                    <i class="fas fa-minus text-xs"></i>
+                                </button>
+                                `}
                                 <span class="w-12 text-center font-medium">${item.quantity}</span>
                                 <button onclick="updateQuantity(${itemId}, 1)" class="w-8 h-8 bg-gray-100 rounded-lg hover:bg-gray-200">
                                     <i class="fas fa-plus text-xs"></i>
@@ -535,18 +619,181 @@
             cartItemsDiv.innerHTML = html;
             totalPriceSpan.textContent = total.toLocaleString('vi-VN') + ' VND';
             mobileTotalPriceSpan.textContent = total.toLocaleString('vi-VN') + ' VND';
-            submitBtn.disabled = false;
-            mobileSubmitBtn.disabled = false;
+
+            const changed = hasCartChanged();
+            submitBtn.disabled = !changed;
+            mobileSubmitBtn.disabled = !changed;
+
+            // Hiển thị nút xóa hết khi có quyền xóa
+            if (canDeleteItems()) {
+                if (clearCartBtnDesktop) {
+                    clearCartBtnDesktop.classList.remove('hidden');
+                    clearCartBtnDesktop.disabled = false;
+                }
+                if (clearCartBtnMobile) {
+                    clearCartBtnMobile.classList.remove('hidden');
+                    clearCartBtnMobile.disabled = false;
+                }
+            } else {
+                if (clearCartBtnDesktop) clearCartBtnDesktop.classList.add('hidden');
+                if (clearCartBtnMobile) clearCartBtnMobile.classList.add('hidden');
+            }
+        }
+
+        function clearCart() {
+            if (Object.keys(cart).length === 0) return;
+
+            if (!canDeleteItems()) {
+                alert('Không thể xóa món vì nhà hàng đã bắt đầu chuẩn bị. Vui lòng liên hệ nhân viên nếu cần hủy món.');
+                return;
+            }
+
+            if (!confirm('Bạn có chắc muốn xóa hết tất cả món trong giỏ hàng?')) {
+                return;
+            }
+
+            cart = {};
+            updateCartDisplay();
+
+            // Nếu đang có order hiện tại (chưa thanh toán), xóa luôn items trên server
+            if (currentOrderId && canDeleteItems()) {
+                console.log('Clearing server cart for order ID:', currentOrderId, 'type:', typeof currentOrderId);
+                
+                // Đảm bảo currentOrderId là number
+                const orderId = typeof currentOrderId === 'string' ? parseInt(currentOrderId) : currentOrderId;
+                
+                if (isNaN(orderId)) {
+                    console.error('Invalid orderId:', currentOrderId);
+                    alert('Lỗi: Mã đơn hàng không hợp lệ');
+                    // Reset currentOrderId ngay cả khi lỗi
+                    currentOrderId = null;
+                    return;
+                }
+                
+                const requestBody = {
+                    orderId: orderId,
+                    items: [] // danh sách rỗng => xóa hết OrderItem
+                };
+                
+                console.log('Request body:', JSON.stringify(requestBody));
+                
+                fetch('/order/update-items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                })
+                .then(res => {
+                    console.log('Response status:', res.status);
+                    if (!res.ok) {
+                        // Đọc response body trước khi throw
+                        return res.json().then(data => {
+                            console.error('Error response:', data);
+                            throw new Error(data.message || 'HTTP error! status: ' + res.status);
+                        });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (!data.success) {
+                        console.error('Clear server cart failed:', data.message);
+                        alert('Xóa trên hệ thống không thành công: ' + (data.message || 'Vui lòng thử lại hoặc báo nhân viên.'));
+                        // Reset currentOrderId ngay cả khi lỗi để tránh lỗi logic
+                        currentOrderId = null;
+                        // Reload để đồng bộ lại giỏ hàng
+                        location.reload();
+                    } else {
+                        console.log('Server cart cleared successfully');
+                        // Sau khi xóa trên server, set snapshot mới là giỏ rỗng
+                        initialCart = {};
+                        isInitialCartSet = true;
+                        // Reset currentOrderId vì order này không còn món nữa
+                        currentOrderId = null;
+                    }
+                })
+                .catch(err => {
+                    console.error('Clear server cart error:', err);
+                    alert('Có lỗi khi xóa trên hệ thống: ' + err.message + '. Vui lòng thử lại hoặc báo nhân viên.');
+                    // Reset currentOrderId ngay cả khi lỗi để tránh lỗi logic
+                    currentOrderId = null;
+                    // Reload để đồng bộ lại giỏ hàng
+                    location.reload();
+                });
+            } else {
+                // Nếu không có order, reset currentOrderId để đảm bảo consistency
+                currentOrderId = null;
+            }
         }
 
         function updateQuantity(itemId, change) {
+            // Nếu giảm số lượng và không được phép xóa
+            if (change < 0 && !canDeleteItems()) {
+                alert('Không thể giảm số lượng món vì nhà hàng đã bắt đầu chuẩn bị. Vui lòng liên hệ nhân viên nếu cần hủy món.');
+                return;
+            }
+            
             if (cart[itemId]) {
                 cart[itemId].quantity += change;
                 if (cart[itemId].quantity <= 0) {
                     delete cart[itemId];
                 }
+                updateCartDisplay();
+                
+                // Auto-sync với server nếu có order hiện tại
+                if (currentOrderId && canDeleteItems()) {
+                    syncCartToServer();
+                }
             }
-            updateCartDisplay();
+        }
+        
+        // Hàm đồng bộ cart với server (gọi khi thay đổi cart)
+        async function syncCartToServer() {
+            if (!currentOrderId) return;
+            
+            // Convert cart to format expected by backend
+            const items = [];
+            for (const [itemId, item] of Object.entries(cart)) {
+                items.push({
+                    menuItemId: parseInt(itemId),
+                    quantity: item.quantity
+                });
+            }
+            
+            try {
+                const orderId = typeof currentOrderId === 'string' ? parseInt(currentOrderId) : currentOrderId;
+                if (isNaN(orderId)) {
+                    console.error('Invalid orderId:', currentOrderId);
+                    return;
+                }
+                
+                const response = await fetch('/order/update-items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        orderId: orderId,
+                        items: items
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Cart synced to server successfully');
+                    // Cập nhật orderStatus nếu có
+                    if (data.orderStatus) {
+                        currentOrderStatus = data.orderStatus;
+                    }
+                } else {
+                    console.error('Failed to sync cart:', data.message);
+                    // Không hiển thị alert để tránh làm phiền user, chỉ log
+                }
+            } catch (err) {
+                console.error('Error syncing cart:', err);
+                // Không hiển thị alert để tránh làm phiền user, chỉ log
+            }
         }
 
         async function submitOrder() {
@@ -564,39 +811,98 @@
             mobileSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang gửi...';
 
             // Convert cart to format expected by backend
-            const items = {};
+            const items = [];
             for (const [itemId, item] of Object.entries(cart)) {
-                items[itemId] = item.quantity;
+                items.push({
+                    menuItemId: parseInt(itemId),
+                    quantity: item.quantity
+                });
             }
 
             try {
-                const response = await fetch('/order/submit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        tableNumber: tableNumber,
-                        items: items
-                    })
-                });
+                // QUAN TRỌNG: Nếu đã có order hiện tại, cập nhật order đó thay vì tạo mới
+                if (currentOrderId && canDeleteItems()) {
+                    // Cập nhật order hiện tại
+                    console.log('Updating existing order:', currentOrderId, 'items:', items);
+                    const response = await fetch('/order/update-items', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            orderId: currentOrderId,
+                            items: items
+                        })
+                    });
 
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Show success modal
-                    document.getElementById('successModal').classList.remove('hidden');
-                    document.getElementById('successModal').classList.add('flex');
+                    const data = await response.json();
                     
-                    // Clear cart
-                    cart = {};
-                    updateCartDisplay();
+                    if (data.success) {
+                        // Cập nhật orderStatus nếu có
+                        if (data.orderStatus) {
+                            currentOrderStatus = data.orderStatus;
+                        }
+                        
+                        // Show success modal
+                        document.getElementById('successModal').classList.remove('hidden');
+                        document.getElementById('successModal').classList.add('flex');
+                        
+                        // Reload để lấy order mới nhất
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                        submitBtn.disabled = false;
+                        mobileSubmitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Đặt món';
+                        mobileSubmitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Đặt món';
+                    }
                 } else {
-                    alert('Lỗi: ' + data.message);
-                    submitBtn.disabled = false;
-                    mobileSubmitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Đặt món';
-                    mobileSubmitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Đặt món';
+                    // Tạo order mới hoặc thêm món vào order hiện tại (nếu order đã ở trạng thái preparing/served)
+                    const itemsMap = {};
+                    for (const item of items) {
+                        itemsMap[item.menuItemId] = item.quantity;
+                    }
+                    
+                    console.log('Submitting order for table:', tableNumber, 'items:', itemsMap);
+                    const response = await fetch('/order/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            tableNumber: tableNumber,
+                            items: itemsMap
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Cập nhật orderId và orderStatus nếu có
+                        if (data.orderId) {
+                            currentOrderId = data.orderId;
+                        }
+                        if (data.orderStatus) {
+                            currentOrderStatus = data.orderStatus;
+                        }
+                        
+                        // Show success modal
+                        document.getElementById('successModal').classList.remove('hidden');
+                        document.getElementById('successModal').classList.add('flex');
+                        
+                        // Reload để lấy order mới nhất
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                        submitBtn.disabled = false;
+                        mobileSubmitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Đặt món';
+                        mobileSubmitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Đặt món';
+                    }
                 }
             } catch (error) {
                 console.error('Error submitting order:', error);
@@ -625,8 +931,99 @@
             }
         }
         
+        // Lưu tableNumber vào localStorage khi vào trang order
+        if (tableNumber) {
+            localStorage.setItem('currentTableNumber', tableNumber);
+            console.log('Saved table number to localStorage:', tableNumber);
+        }
+
+        // Load order hiện tại khi trang load
+        async function loadCurrentOrder() {
+            try {
+                console.log('Loading current order for table:', tableNumber);
+                const response = await fetch(`/order/current/${tableNumber}`);
+                const data = await response.json();
+                
+                if (data.success && data.order) {
+                    // QUAN TRỌNG: Kiểm tra lại tableNumber từ response để đảm bảo đúng bàn
+                    if (data.order.tableNumber !== tableNumber) {
+                        console.error('ERROR: Order belongs to table ' + data.order.tableNumber + ' but current table is ' + tableNumber);
+                        alert('Lỗi: Đơn hàng không thuộc bàn này. Vui lòng reload trang.');
+                        return;
+                    }
+                    
+                    console.log('Loaded order ID=' + data.order.id + ' for table ' + tableNumber);
+                    currentOrderId = data.order.id;
+                    currentOrderStatus = data.order.status;
+                    
+                    // Xóa giỏ hàng cũ trước khi load mới (tránh lẫn lộn giữa các bàn)
+                    cart = {};
+                    
+                    // Load các món đã đặt vào giỏ hàng (nếu có)
+                    if (data.order.items && data.order.items.length > 0) {
+                        for (const item of data.order.items) {
+                            const menuItem = item.menuItem;
+                            cart[menuItem.id] = {
+                                name: menuItem.name,
+                                price: parseFloat(menuItem.price),
+                                quantity: item.quantity
+                            };
+                        }
+                    }
+                    // Lưu lại snapshot giỏ hàng ban đầu (kể cả khi rỗng) để kiểm tra thay đổi
+                    initialCart = JSON.parse(JSON.stringify(cart));
+                    isInitialCartSet = true;
+                    updateCartDisplay();
+                    
+                    // Hiển thị thông báo nếu order đang được chuẩn bị
+                    if (currentOrderStatus === 'preparing' || currentOrderStatus === 'served') {
+                        showOrderStatusNotification();
+                    }
+                } else {
+                    console.log('No current order found for table:', tableNumber);
+                    // Đảm bảo giỏ hàng rỗng nếu không có order
+                    cart = {};
+                    initialCart = {};
+                    isInitialCartSet = false;
+                    updateCartDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading current order:', error);
+            }
+        }
+        
+        // Hiển thị thông báo trạng thái order
+        function showOrderStatusNotification() {
+            const statusMessages = {
+                'preparing': 'Nhà hàng đang chuẩn bị món của bạn. Bạn có thể thêm món mới nhưng không thể xóa món đã đặt.',
+                'served': 'Món của bạn đã được phục vụ. Bạn có thể thêm món mới nhưng không thể xóa món đã đặt.'
+            };
+            
+            const message = statusMessages[currentOrderStatus] || 'Đơn hàng của bạn đang được xử lý.';
+            
+            // Tạo thông báo
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-lg z-50 max-w-md';
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <p class="text-sm">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            
+            // Tự động ẩn sau 5 giây
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.5s';
+                setTimeout(() => notification.remove(), 500);
+            }, 5000);
+        }
+        
         // Category navigation active state
         document.addEventListener('DOMContentLoaded', function() {
+            // Load order hiện tại
+            loadCurrentOrder();
             const categoryLinks = document.querySelectorAll('.category-nav-item');
             const categories = document.querySelectorAll('[id^="category-"]');
             
